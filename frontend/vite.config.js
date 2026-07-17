@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [
     react(),
+    babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
-    babel({ presets: [reactCompilerPreset()] })
   ],
 })
