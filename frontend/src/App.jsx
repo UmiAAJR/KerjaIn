@@ -11,6 +11,11 @@ import Login from './pages/auth/Login'
 import ClientDashboard from './pages/client/Dashboard'
 import Register from './pages/auth/Register'
 import Search from './pages/client/Search'
+import WorkerDashboard from './pages/worker/Dashboard'
+import WorkerWallet from './pages/worker/Wallet'
+import WorkerProfile from './pages/worker/Profile'
+import WorkerActivity from './pages/worker/Activity'
+import WorkerHistory from './pages/worker/History'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -57,6 +62,7 @@ function AppRoutes() {
         path='/client/search'
         element={<Search />}
       />
+      
       {/*
       <Route 
         path='/client/worker/:id' 
@@ -94,6 +100,35 @@ function AppRoutes() {
       /> */}
 
       {/* Worker */}
+      {/* <Route 
+        path="/worker/dashboard" 
+        element={<WorkerDashboard/>} 
+      /> */}
+
+      <Route 
+        path="/worker/dashboard" 
+        element={<WorkerDashboard/>} 
+      />
+      <Route 
+        path="/worker/wallet" 
+        element={<WorkerWallet/>} 
+      />
+
+      <Route 
+        path="/worker/profile" 
+        element={<WorkerProfile/>} 
+      />
+
+        <Route 
+        path="/worker/activity" 
+        element={<WorkerActivity/>} 
+      />
+
+        <Route 
+        path="/worker/history" 
+        element={<WorkerHistory/>} 
+      />
+
       {/* <Route 
         path="/worker/dashboard" 
         element={} 
