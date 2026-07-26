@@ -1,15 +1,73 @@
-import React, { useEffect, useState } from 'react'
-import { workerApi } from '../../services/api';
+import { useState, useEffect } from 'react';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
-import { useMap } from 'react-leaflet/hooks'
+import { useAuth } from "../../context/AuthContext";
+import { workerApi } from "../../services/api";
 import {
-  TrendingUp, History, Zap, ClipboardCheck, Clock, Timer, Star, Calendar, MapPin
+  TrendingUp,
+  History,
+  Zap,
 
+  Calendar,
+  MapPin,
+  ClipboardList,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Marker, Popup, MapContainer, TileLayer } from 'react-leaflet';
 
 export default function WorkerDashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      if (!user || !user.id) return;
+      setLoading(true);
+      try {
+        const res = await workerApi.getDashboard(user.id);
+        setDashboardData(res);
+      } catch (err) {
+        console.error("Gagal memuat dasbor worker:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
+  }, [user]);
+
+  const formatPrice = (val) => {
+    if (val === undefined || val === null) return "Rp 0";
+    return `Rp ${val.toLocaleString('id-ID')}`;
+  };
+
+  const formatPriceK = (val) => {
+    if (val === undefined || val === null) return "Rp 0";
+    if (val >= 1000000) {
+      return `Rp ${(val / 1000000).toFixed(1)}jt`;
+    }
+    if (val >= 1000) {
+      return `Rp ${(val / 1000).toFixed(0)}rb`;
+    }
+    return `Rp ${val}`;
+  };
+
+  if (loading) {
+    return (
+      <MobileLayout
+        topNavProps={{ variant: "location", hasNotification: true }}
+        bottomNavProps={{ activeTab: "home" }}
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  const coords = user?.latitude && user?.longitude ? [user.latitude, user.longitude] : [-6.2088, 106.8456];
 
   return (
     <MobileLayout
@@ -21,200 +79,182 @@ export default function WorkerDashboard() {
         activeTab: "home",
       }}
     >
-      <div className="px-5 pt-5 pb-8 space-y-6 relative">
+      <div className="px-5 pt-5 pb-8 space-y-6 text-left">
         {/* Heading */}
         <div>
-          <h2 className="text-2xl font-black text-primary-600 font-heading tracking-tight leading-tight">
-            Halo, AAJR
+          <h2 className="text-2xl font-black text-[#005B66] font-heading tracking-tight leading-tight">
+            Halo, {user?.name || 'Worker'}
           </h2>
-          <h3 className="text-sm text-gray-500">
-            siap untuk menyelesaikan pekerjaan hari ini ?
+          <h3 className="text-sm text-gray-500 font-semibold mt-1">
+            Siap untuk menyelesaikan pekerjaan hari ini?
           </h3>
         </div>
 
-        {/* Box Saldo dan Riwayat */}
-        <div className="relative w-full max-w-sm rounded-2xl bg-[#0e7490] p-5 text-white shadow-md">
+        {/* Box Saldo */}
+        <div className="relative w-full max-w-sm rounded-3xl bg-[#0e7490] p-6 text-white shadow-lg overflow-hidden">
+          <div className="absolute -right-8 -bottom-8 w-24 h-24 bg-cyan-600/30 rounded-full"></div>
           <div className="relative z-10">
-            <p className="text-md font-medium text-cyan-100/80">Saldo Anda</p>
-            <h2 className="mt-2 mb-4 text-3xl font-bold tracking-tight leading-tight text-white">
-              Rp 2.500.000
+            <p className="text-xs font-bold text-cyan-100/90 uppercase tracking-wider">Saldo Pendapatan Anda</p>
+            <h2 className="mt-2.5 mb-5 text-3xl font-black tracking-tight leading-tight text-white font-heading">
+              {formatPrice(dashboardData?.income?.walletBalance)}
             </h2>
 
-            {/* Tombol Tarik Dana & Riwayat */}
+            {/* Tombol Aksi */}
             <div className="flex gap-3">
-              <Link to={"/worker/wallet"} className="flex-1 rounded-xl bg-[#dbeefd] py-3 text-center font-semibold text-[#0e7490] transition hover:bg-white active:scale-[0.98]">
+              <Link to="/worker/wallet" className="flex-grow rounded-2xl bg-white py-3 text-center text-xs font-black text-[#0e7490] hover:bg-cyan-50 shadow-sm active:scale-[0.99] transition-all">
                 Tarik Dana
               </Link>
-
               <button
-                className="flex items-center justify-center rounded-xl border border-white/40 p-3 text-white transition hover:bg-white/10 active:scale-95"
+                onClick={() => navigate('/worker/history')}
+                className="flex items-center justify-center rounded-2xl border border-white/20 hover:bg-white/10 px-4 text-white transition active:scale-95 cursor-pointer"
                 aria-label="Riwayat Transaksi"
               >
-                <History className="h-5 w-5" />
+                <History className="h-4.5 w-4.5" />
               </button>
             </div>
           </div>
         </div>
 
         {/* RINGKASAN PENDAPATAN */}
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-[#F3F6FD] p-5 shadow-sm">
-          {/* Header Ringkasan */}
-          <div className="mb-5 flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">
-              RINGKASAN PENDAPATAN
+        <div className="w-full max-w-sm rounded-3xl border border-slate-100 bg-[#F3F6FD] p-5 shadow-xs">
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+              RINGKASAN ESTIMASI
             </span>
-            <TrendingUp className="h-5 w-5 text-[#005B66]" />
+            <TrendingUp className="h-4 w-4 text-[#005B66]" />
           </div>
 
-          {/* Grid 3 Kolom */}
-          <div className="grid grid-cols-3 divide-x divide-slate-300">
-            {/* Hari Ini */}
+          <div className="grid grid-cols-3 divide-x divide-slate-200">
             <div className="flex flex-col items-center justify-center px-1">
-              <p className="text-xs font-medium text-slate-600">Hari Ini</p>
-              <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  350k
-                </p>
-              </div>
+              <p className="text-[10px] font-bold text-slate-500">Hari Ini</p>
+              <p className="text-sm font-black text-slate-800 font-heading mt-1">
+                {formatPriceK(dashboardData?.income?.todayIncome)}
+              </p>
             </div>
-
-            {/* Minggu Ini */}
             <div className="flex flex-col items-center justify-center px-1">
-              <p className="text-xs font-medium text-slate-600">Minggu Ini</p>
-              <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  1.8M
-                </p>
-              </div>
+              <p className="text-[10px] font-bold text-slate-500">Minggu Ini</p>
+              <p className="text-sm font-black text-slate-800 font-heading mt-1">
+                {formatPriceK(dashboardData?.income?.weeklyIncome)}
+              </p>
             </div>
-
-            {/* Bulan Ini */}
             <div className="flex flex-col items-center justify-center px-1">
-              <p className="text-xs font-medium text-slate-600">Bulan Ini</p>
-              <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-[#005B66]">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-[#005B66]">
-                  5.2M
-                </p>
-              </div>
+              <p className="text-[10px] font-bold text-slate-500">Bulan Ini</p>
+              <p className="text-sm font-black text-slate-800 font-heading mt-1">
+                {formatPriceK(dashboardData?.income?.monthlyIncome)}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Container Scroll Horizontal */}
-
-        <div className="no-scrollbar overflow-x-auto flex items-center gap-3.5 ">
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
+        {/* STATISTIK ORDER */}
+        <div className="no-scrollbar overflow-x-auto flex items-center gap-4 py-1">
+          <div className="flex flex-row items-center shrink-0 w-44 rounded-2xl bg-cyan-50/70 border border-cyan-100 p-4 gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-600 text-white">
+              <Zap className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
+              <span className="text-lg font-black text-cyan-900 leading-tight block">{dashboardData?.order?.activeOrder || 0}</span>
+              <p className="text-[10px] font-bold text-cyan-600/90 uppercase tracking-wide">Order Aktif</p>
             </div>
           </div>
 
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
+          <div className="flex flex-row items-center shrink-0 w-44 rounded-2xl bg-amber-50/70 border border-amber-100 p-4 gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+              <ClipboardList className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
+              <span className="text-lg font-black text-amber-900 leading-tight block">{dashboardData?.order?.pendingOrder || 0}</span>
+              <p className="text-[10px] font-bold text-amber-600/90 uppercase tracking-wide">Pending</p>
             </div>
           </div>
 
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
+          <div className="flex flex-row items-center shrink-0 w-44 rounded-2xl bg-emerald-50/70 border border-emerald-100 p-4 gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+              <CheckCircle2 className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
+              <span className="text-lg font-black text-emerald-900 leading-tight block">{dashboardData?.order?.completeOrder || 0}</span>
+              <p className="text-[10px] font-bold text-emerald-600/90 uppercase tracking-wide">Selesai</p>
             </div>
           </div>
         </div>
 
         {/* PEKERJAAN SELANJUTNYA */}
-        <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+        <div>
+          <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3.5">
+            PEKERJAAN TERDEKAT
+          </h4>
 
-          {/* 1. BADGE JAM */}
-          <div className="absolute top-0 right-0 rounded-bl-xl bg-[#F9A825] px-3 py-1">
-            <span className="text-xs font-bold text-[#5D3A00]">
-              Mulai 14:00
-            </span>
-          </div>
-
-          {/* 2. ROW 1: HEADER PROFIL */}
-          <div className="flex items-center gap-3 pt-1">
-            {/* Col 1: Foto Profil */}
-            <img
-              src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"
-              alt="Pak Hermawan"
-              className="h-16 w-16 rounded-xl object-cover"
-            />
-
-            {/* Col 2: Info Pekerja */}
-            <div className="flex flex-col justify-center">
-              <span className="text-xs font-bold text-[#005B66]">
-                Cleaning Service Pro
-              </span>
-              <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                Pak Hermawan
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-slate-600 font-medium mt-0.5">
-                <Star className="h-3.5 w-3.5 fill-slate-800 text-slate-800" />
-                <span>4.9 (Top Client)</span>
+          {dashboardData?.nextJob ? (
+            <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-xs space-y-4">
+              <div className="absolute top-0 right-0 rounded-bl-2xl bg-[#F9A825] px-3.5 py-1.5 shadow-xs">
+                <span className="text-[10px] font-black text-[#5D3A00] tracking-wider uppercase">
+                  {dashboardData.nextJob.schedule.split(' ')[1] || 'Mulai'}
+                </span>
               </div>
+
+              <div className="flex items-center gap-3 pt-1">
+                <div className="h-14 w-14 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-center text-[#005B66] font-bold text-lg shrink-0">
+                  {dashboardData.nextJob.clientName.charAt(0)}
+                </div>
+
+                <div className="flex flex-col justify-center min-w-0">
+                  <span className="text-[10px] font-black text-[#005B66] uppercase tracking-wider">
+                    {dashboardData.nextJob.service}
+                  </span>
+                  <h3 className="text-base font-black text-slate-900 leading-snug truncate">
+                    {dashboardData.nextJob.clientName}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="border-b border-slate-100 my-1" />
+
+              <div className="flex items-center gap-3 text-slate-600">
+                <Calendar className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-semibold">{dashboardData.nextJob.schedule}</span>
+              </div>
+
+              <div className="flex items-center gap-3 text-slate-600">
+                <MapPin className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+                <span className="text-xs font-semibold truncate">{dashboardData.nextJob.location}</span>
+              </div>
+
+              <button
+                onClick={() => navigate('/worker/activity')}
+                className="mt-2 w-full rounded-2xl bg-[#005B66] py-3 text-center text-xs font-black text-white hover:bg-[#004852] active:scale-[0.99] transition-all cursor-pointer shadow-sm shadow-cyan-100"
+              >
+                Lihat Detail Aktivitas
+              </button>
             </div>
-          </div>
-
-          {/* 3. GARIS PEMISAH */}
-          <div className="border-b border-slate-200/80 my-1" />
-
-          {/* 4. ROW 2: TANGGAL */}
-          <div className="flex items-center gap-3 text-slate-700">
-            <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
-            <span className="text-sm font-semibold">Selasa, 24 Okt 2023</span>
-          </div>
-
-          {/* 5. ROW 3: LOKASI */}
-          <div className="flex items-center gap-3 text-slate-700">
-            <MapPin className="h-5 w-5 text-slate-500 shrink-0" />
-            <span className="text-sm font-semibold">Pondok Indah, Jakarta Selatan</span>
-          </div>
-
-          {/* 6. ROW 4: TOMBOL AKSI */}
-          <button className="mt-2 w-full rounded-xl bg-[#005B66] py-3 text-center text-sm font-bold text-white transition hover:bg-[#004852] active:scale-[0.98]">
-            Lihat Detail Pekerjaan
-          </button>
-
-
+          ) : (
+            <div className="w-full max-w-sm rounded-3xl border border-slate-100 bg-white p-6 text-center shadow-xs text-slate-400 space-y-2">
+              <AlertCircle size={28} className="mx-auto text-slate-300 stroke-[1.5]" />
+              <p className="text-xs font-bold">Tidak ada pekerjaan tertunda atau berjalan.</p>
+              <p className="text-[10px] text-slate-400 font-medium">Buka menu Aktivitas untuk melihat booking baru.</p>
+            </div>
+          )}
         </div>
-        <MapContainer attributionControl className='w-full h-60' center={[-7.2575, 112.7521]} zoom={13} scrollWheelZoom={false}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker  position={[ -7.2575, 112.7521]}>
-            <Popup>
-              A pretty CSS3 popup. <br /> Easily customizable.
-            </Popup>
-          </Marker>
-        </MapContainer>
 
-
-
-
-
+        {/* PETA LOKASI */}
+        <div>
+          <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3.5">
+            LOKASI ANDA
+          </h4>
+          <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-xs">
+            <MapContainer attributionControl className='w-full h-52' center={coords} zoom={14} scrollWheelZoom={false}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={coords}>
+                <Popup>
+                  <p className="text-xs font-bold">Lokasi Saya ({user?.name})</p>
+                </Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+        </div>
       </div>
     </MobileLayout>
   );

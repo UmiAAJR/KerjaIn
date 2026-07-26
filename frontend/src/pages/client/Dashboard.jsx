@@ -1,22 +1,18 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clientApi } from '../../services/api';
 import MobileLayout from "../../components/layout/MobileLayout";
 import {
-    MapPin,
     Star,
     Compass,
     Wrench,
     ChevronRight,
     ShieldCheck,
-    Bell,
     Zap,
     Brush,
-    Snowflake,
     SlidersHorizontal,
     Wallet,
     Check,
-    ChevronDown,
     Car,
     SearchIcon
 } from 'lucide-react';
@@ -47,46 +43,13 @@ const ClientDashboard = () => {
     }, []);
 
     const mapWorkerDetails = (worker) => {
-        if (worker.id === 'worker-1') {
-            return {
-                ...worker,
-                name: 'Budi Santoso',
-                roleName: 'Ahli Kelistrikan',
-                distanceText: '0.8 km',
-                priceText: 'Rp 75rb/jam',
-                ratingVal: '4.9',
-                tags: ['WIRING', 'AC REPAIR']
-            };
-        }
-        if (worker.id === 'worker-2') {
-            return {
-                ...worker,
-                name: 'Siti Aminah',
-                roleName: 'Kebersihan',
-                distanceText: '0.5 km',
-                priceText: 'Rp 40rb/jam',
-                ratingVal: '4.8',
-                tags: ['DAILY CLEAN', 'DEEP CLEAN']
-            };
-        }
-        if (worker.id === 'worker-3') {
-            return {
-                ...worker,
-                name: 'Agus Pratama',
-                roleName: 'Tukang Bangunan',
-                distanceText: '1.2 km',
-                priceText: 'Rp 50rb/jam',
-                ratingVal: '4.7',
-                tags: ['CERAMIC', 'ROOF']
-            };
-        }
         return {
             ...worker,
             name: worker.name,
             roleName: worker.skills[0]?.skillName || 'Layanan Umum',
             distanceText: `${worker.distance} km`,
             priceText: `Rp ${(worker.hourlyRate / 1000)}rb/jam`,
-            ratingVal: worker.rating.toFixed(1),
+            ratingVal: typeof worker.rating === 'number' ? worker.rating.toFixed(1) : '5.0',
             tags: worker.skills.map(s => s.skillName.toUpperCase()).slice(0, 2)
         };
     };

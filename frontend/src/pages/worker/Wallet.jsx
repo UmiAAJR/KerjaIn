@@ -1,7 +1,4 @@
-import React from 'react';
-import { workerApi } from '../../services/api';
 import MobileLayout from "../../components/layout/MobileLayout";
-import { Link, useNavigate } from 'react-router-dom';
 import { 
   BadgeCheck, 
   Banknote, 

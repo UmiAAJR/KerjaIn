@@ -1,200 +1,114 @@
-import React from 'react'
-import { workerApi } from '../../services/api';
+import { useState, useEffect } from 'react';
 import MobileLayout from "../../components/layout/MobileLayout";
-import { Link, useNavigate } from 'react-router-dom';
-
+import { useAuth } from "../../context/AuthContext";
+import { workerApi } from "../../services/api";
+import { Calendar, Star, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function WorkerHistory() {
+  const { user } = useAuth();
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user || !user.id) return;
+      setLoading(true);
+      try {
+        const data = await workerApi.getHistory(user.id);
+        setHistory(data.reverse());
+      } catch (err) {
+        console.error("Gagal memuat riwayat worker:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [user]);
+
   return (
     <MobileLayout
       topNavProps={{
-        variant: "location",
+        variant: "brand",
+        brandName: "Riwayat Selesai",
         hasNotification: true,
       }}
       bottomNavProps={{
-        activeTab: "home",
+        activeTab: "activity",
       }}
     >
-      <div className="p-4 max-w-md mx-auto bg-slate-50 min-h-screen">
+      <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 p-4 pb-20 text-left">
+        
         {/* Title */}
-        <h1 className="text-2xl font-bold text-slate-900 mb-4">Riwayat Pekerjaan</h1>
-
-        {/* Filter Chips (Horizontal Scrollable) */}
-        <div className="flex space-x-2 overflow-x-auto no-scrollbar mb-6 pb-2">
-          <button className="px-4 py-2 rounded-full text-sm font-semibold bg-teal-800 text-white whitespace-nowrap shadow-xs">
-            Semua
-          </button>
-          <button className="px-4 py-2 rounded-full text-sm font-medium bg-indigo-50/70 text-slate-600 hover:bg-indigo-100 whitespace-nowrap">
-            Dalam Proses
-          </button>
-          <button className="px-4 py-2 rounded-full text-sm font-medium bg-indigo-50/70 text-slate-600 hover:bg-indigo-100 whitespace-nowrap">
-            Selesai
-          </button>
-          <button className="px-4 py-2 rounded-full text-sm font-medium bg-indigo-50/70 text-slate-600 hover:bg-indigo-100 whitespace-nowrap">
-            Dibatalkan
-          </button>
+        <div className="mb-5">
+          <h1 className="text-xl font-black text-slate-800 tracking-tight leading-tight">Daftar Riwayat Selesai</h1>
+          <p className="text-xs text-gray-500 font-semibold mt-1">Daftar seluruh pekerjaan yang telah diselesaikan dan dibayar penuh.</p>
         </div>
 
         {/* Card List */}
-        <div className="space-y-4">
-          {/* CARD 1: SELESAI */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-xs font-semibold">
-                <span>🧹</span>
-                <span>Kebersihan Rumah</span>
-              </div>
-              <span className="text-xs font-extrabold tracking-wide text-emerald-700">
-                SELESAI
-              </span>
-            </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
+        ) : history.length === 0 ? (
+          <div className="text-center py-16 space-y-3 bg-white rounded-3xl border border-slate-100 p-6">
+            <AlertCircle size={32} className="mx-auto text-slate-300 stroke-[1.5]" />
+            <p className="text-xs font-bold text-slate-400">Belum ada riwayat selesai</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {history.map((job) => (
+              <div key={job.jobId} className="bg-white rounded-2xl p-4 border border-slate-150 shadow-xs hover:border-slate-350 transition-all">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                    <Sparkles size={11} className="stroke-[2.5]" />
+                    <span>{job.service}</span>
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest text-emerald-700">
+                    {job.status}
+                  </span>
+                </div>
 
-            <div className="flex items-center space-x-3 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150"
-                alt="Siti Rahma"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Siti Rahma</h3>
-                <p className="text-xs text-slate-500 font-medium">12 Okt 2023 • 09:00 WIB</p>
-              </div>
-            </div>
+                <div className="flex items-center space-x-3 mb-4 pr-16">
+                  <div className="w-11 h-11 rounded-full bg-cyan-50 border border-cyan-100 flex items-center justify-center text-[#007088] font-bold text-sm">
+                    {job.clientName.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-800 text-sm leading-snug">{job.clientName}</h3>
+                    <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1 mt-0.5">
+                      <Calendar size={12} className="text-slate-400 stroke-[2.5]" />
+                      <span>{job.finishedAt || job.schedule}</span>
+                    </p>
+                  </div>
+                </div>
 
-            <hr className="border-slate-100 mb-3" />
+                <hr className="border-slate-100 mb-3" />
 
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">Rating Diberikan</p>
-                <div className="flex text-amber-400 text-sm space-x-0.5">
-                  ★ ★ ★ ★ ★
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">Rating Client</p>
+                    <div className="flex text-amber-500 text-xs gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          fill={i < (job.rating || 5) ? 'currentColor' : 'none'}
+                          className={i < (job.rating || 5) ? 'text-amber-500' : 'text-slate-200'}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Upah Diterima</p>
+                    <p className="font-black text-sm text-[#007088] mt-0.5">
+                      Rp {job.price.toLocaleString('id-ID')}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-[11px] text-slate-500 font-medium">Total Bayar</p>
-                <p className="font-bold text-base text-teal-800">Rp 150.000</p>
-              </div>
-            </div>
+            ))}
           </div>
-
-          {/* CARD 2: DIBATALKAN */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center space-x-1.5 bg-sky-50 text-sky-800 px-3 py-1 rounded-full text-xs font-semibold">
-                <span>🔧</span>
-                <span>Perbaikan Listrik</span>
-              </div>
-              <span className="text-xs font-extrabold tracking-wide text-red-600">
-                DIBATALKAN
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150"
-                alt="Andi Saputra"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Andi Saputra</h3>
-                <p className="text-xs text-slate-500 font-medium">10 Okt 2023 • 14:30 WIB</p>
-              </div>
-            </div>
-
-            <hr className="border-slate-100 mb-3" />
-
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-xs text-red-500 font-medium">Oleh Pekerja</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] text-slate-500 font-medium">Estimasi Harga</p>
-                <p className="font-bold text-base text-slate-400 line-through">Rp 220.000</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 3: SELESAI */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center space-x-1.5 bg-amber-50 text-amber-800 px-3 py-1 rounded-full text-xs font-semibold">
-                <span>🪛</span>
-                <span>Servis Pompa Air</span>
-              </div>
-              <span className="text-xs font-extrabold tracking-wide text-emerald-700">
-                SELESAI
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
-                alt="Budi Utomo"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Budi Utomo</h3>
-                <p className="text-xs text-slate-500 font-medium">05 Okt 2023 • 11:15 WIB</p>
-              </div>
-            </div>
-
-            <hr className="border-slate-100 mb-3" />
-
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">Rating Diberikan</p>
-                <div className="flex text-amber-400 text-sm space-x-0.5">
-                  ★ ★ ★ ★ <span className="text-slate-300">★</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] text-slate-500 font-medium">Total Bayar</p>
-                <p className="font-bold text-base text-teal-800">Rp 300.000</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CARD 4: SELESAI */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full text-xs font-semibold">
-                <span>🪴</span>
-                <span>Taman & Lanskap</span>
-              </div>
-              <span className="text-xs font-extrabold tracking-wide text-emerald-700">
-                SELESAI
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
-                alt="Eko Wahyudi"
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Eko Wahyudi</h3>
-                <p className="text-xs text-slate-500 font-medium">01 Okt 2023 • 08:00 WIB</p>
-              </div>
-            </div>
-
-            <hr className="border-slate-100 mb-3" />
-
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-[11px] text-slate-500 font-medium mb-0.5">Rating Diberikan</p>
-                <div className="flex text-amber-400 text-sm space-x-0.5">
-                  ★ ★ ★ ★ ★
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] text-slate-500 font-medium">Total Bayar</p>
-                <p className="font-bold text-base text-teal-800">Rp 450.000</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </MobileLayout>
-  )
+  );
 }
