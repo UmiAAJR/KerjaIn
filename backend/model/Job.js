@@ -70,6 +70,13 @@ export default class Job extends Model {
           { name: "JobID" },
         ]
       },
+      {
+        name: "job_active",
+        fields: ["status"],
+        where: {
+          status: "active"
+        }
+      }
     ]
   });
   }

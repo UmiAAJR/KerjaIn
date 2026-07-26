@@ -3,50 +3,39 @@ import initModels from "../model/init-models.js";
 
 
 const model = initModels(db)
+const WorkerSkill = model.WorkerSkill
 const Worker = model.Worker
 const User = model.User
 const Skill = model.Skill
-const WorkerSkill = model.WorkerSkill
 
-export const getWorker =  async(req, res) => {
+export const getWorkerSkill =  async(req, res) => {
     try {
-        const perPage = req.query.perPage ?? 10
-        const totalData = await User.count()
-        let page = req.query.page ?? 1
-        let offset = (page - 1) * perPage
-
-        const worker = await Worker.findAll({
+        const workerSkill = await WorkerSkill.findAll({
             where: {
                 ...req.query
             },
-
-            limit: perPage,
-            offset: offset,
-
             include: [
                 {
-                    model: User,
-                    attributes: {
-                        exclude: ["password"]
-                    }
-                },
-                {
-                    model: WorkerSkill,
+                    model: Worker,
+                    attributes: ["WorkerID", "UserID"],
                     include: [
                         {
-                            model: Skill
+                            model: User,
+                            attributes: {
+                                exclude: ["password"]
+                            }
                         }
                     ]
+                },
+                {
+                    model: Skill
                 }
             ]
         })
 
-        const totalData = await Worker.count()
-
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: worker,
-            totalData: totalData
+            data: workerSkill
         })
     } catch (error) {
         return res.status(500).json({
@@ -55,33 +44,35 @@ export const getWorker =  async(req, res) => {
     }
 }
 
-export const getDetailWorker = async (req, res) => {
+export const getDetailWorkerSkill = async (req, res) => {
     try {
-        const worker = await Worker.findOne({
+        const workerSkill = await WorkerSkill.findOne({
             where: {
-                WorkerID: req.params.id
+                WorkerSkillID: req.params.id
             },
+            
             include: [
                 {
-                    model: User,
-                    attributes: {
-                        exclude: ["password"]
-                    }
-                },
-                {
-                    model: WorkerSkill,
+                    model: Worker,
+                    attributes: ["WorkerID", "UserID"],
                     include: [
                         {
-                            model: Skill
+                            model: User,
+                            attributes: {
+                                exclude: ["password"]
+                            }
                         }
                     ]
+                },
+                {
+                    model: Skill
                 }
             ]
         })
 
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: worker
+            data: workerSkill
         })
     } catch (error) {
         return res.status(500).json({
@@ -90,9 +81,9 @@ export const getDetailWorker = async (req, res) => {
     }
 }
 
-export const createWorker = async(req, res) => {
+export const createWorkerSkill = async(req, res) => {
     try {
-        await Worker.create(req.body)
+        await WorkerSkill.create(req.body)
 
         return res.json({
             message: "Berhasil membuat data"
@@ -104,11 +95,11 @@ export const createWorker = async(req, res) => {
     }
 }
 
-export const updateWorker = async(req, res) => {
+export const updateWorkerSkill = async(req, res) => {
     try {
-        await Worker.update(req.body, {
+        await WorkerSkill.update(req.body, {
             where: {
-                WorkerID: req.params.id
+                WorkerSkillID: req.params.id
             }
         })
 
@@ -122,11 +113,11 @@ export const updateWorker = async(req, res) => {
     }
 }
 
-export const deleteWorker = async(req, res) => {
+export const deleteWorkerSkill = async(req, res) => {
     try {
-        await Worker.destroy({
+        await WorkerSkill.destroy({
             where: {
-                WorkerID: req.params.id
+                WorkerSkillID: req.params.id
             }
         })
 

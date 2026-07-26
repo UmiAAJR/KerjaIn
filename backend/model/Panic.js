@@ -29,14 +29,6 @@ export default class Panic extends Model {
         model: 'job',
         key: 'JobID'
       }
-    },
-    HistoryID: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: 'history',
-        key: 'HistoryID'
-      }
     }
   }, {
     sequelize,
