@@ -24,7 +24,7 @@ export default function WorkerWallet() {
         hasNotification: true,
       }}
       bottomNavProps={{
-        activeTab: "home",
+        activeTab: "wallet",
       }}
     >
       {/* WRAPPER UTAMA DENGAN PADDING KONSISTEN */}

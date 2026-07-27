@@ -9,6 +9,6 @@ VerifyRoute.get("/:id", getDetailVerify)
 VerifyRoute.post("/", VerifyUser, VerifyWorker, createVerify)
 VerifyRoute.patch("/:id", VerifyUser, VerifyWorker, updateVerify)
 VerifyRoute.delete("/:id", VerifyUser, VerifyAdmin, deleteVerify)
-VerifyRoute.patch("/accept", VerifyUser, VerifyAdmin, handleVerify)
+VerifyRoute.patch("/handle", VerifyUser, VerifyAdmin, handleVerify)
 
 export default VerifyRoute

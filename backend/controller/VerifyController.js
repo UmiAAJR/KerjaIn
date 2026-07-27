@@ -10,7 +10,7 @@ const User = model.User
 export const getVerify =  async(req, res) => {
     try {
         const perPage = req.query.perPage ?? 10
-        const totalData = await User.count()
+        const totalData = await Verify.count()
         let page = req.query.page ?? 1
         let offset = (page - 1) * perPage
 

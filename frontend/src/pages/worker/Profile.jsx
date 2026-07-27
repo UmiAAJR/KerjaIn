@@ -26,7 +26,7 @@ export default function WorkerProfile() {
                 hasNotification: true,
             }}
             bottomNavProps={{
-                activeTab: "home",
+                activeTab: "profile",
             }}
         >
             <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 pb-20">
