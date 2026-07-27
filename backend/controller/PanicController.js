@@ -23,7 +23,6 @@ export const getPanic = async (req, res) => {
             ]
         })
 
-        const totalData = await Panic.count()
 
         return res.json({
             message: "Berhasil mendapatkan data",
