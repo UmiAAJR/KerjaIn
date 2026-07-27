@@ -20,7 +20,6 @@ export const getNotification =  async(req, res) => {
                 ...req.query
             }
         })
-        const totalData = await Notification.count()
 
         return res.json({
             message: "Berhasil mendapatkan data",

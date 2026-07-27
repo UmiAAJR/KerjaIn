@@ -41,8 +41,6 @@ export const getWorker =  async(req, res) => {
             ]
         })
 
-        const totalData = await Worker.count()
-
         return res.json({
             message: "Berhasil mendapatkan data",
             data: worker,

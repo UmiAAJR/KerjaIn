@@ -32,13 +32,13 @@ app.use("/worker-skill", WorkerSkillRoute)
 
 
 // Buat sinkronisasi kalo apdet
-// db.sync({ alter: true })
-//     .then(() => {
-//         console.log('Database berhasil disinkronisasi!');
-//     })
-//     .catch((err) => {
-//         console.error('Gagal sinkronisasi:', err);
-//     });
+db.sync({ alter: true })
+    .then(() => {
+        console.log('Database berhasil disinkronisasi!');
+    })
+    .catch((err) => {
+        console.error('Gagal sinkronisasi:', err);
+    });
 app.listen(port, () => {
     console.log("berhasil terhubung ke server");
 })
