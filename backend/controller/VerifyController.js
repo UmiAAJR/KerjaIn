@@ -3,38 +3,33 @@ import initModels from "../model/init-models.js";
 
 
 const model = initModels(db)
+const Verify = model.Verify
 const Worker = model.Worker
 const User = model.User
-const Skill = model.Skill
-const WorkerSkill = model.WorkerSkill
 
-export const getWorker =  async(req, res) => {
+export const getVerify =  async(req, res) => {
     try {
         const perPage = req.query.perPage ?? 10
-        const totalData = await Worker.count()
-        let page = req.query.page ?? 
+        const totalData = await Verify.count()
+        let page = req.query.page ?? 1
         let offset = (page - 1) * perPage
 
-        const worker = await Worker.findAll({
+        const verify = await Verify.findAll({
             where: {
                 ...req.query
             },
-
+            
             limit: perPage,
             offset: offset,
 
             include: [
                 {
-                    model: User,
-                    attributes: {
-                        exclude: ["password"]
-                    }
-                },
-                {
-                    model: WorkerSkill,
+                    model: Worker,
+                    attributes: ["WorkerID", "UserID"],
                     include: [
                         {
-                            model: Skill
+                            model: User,
+                            include: ["name"]
                         }
                     ]
                 }
@@ -43,7 +38,7 @@ export const getWorker =  async(req, res) => {
 
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: worker,
+            data: verify,
             totalData: totalData
         })
     } catch (error) {
@@ -53,24 +48,22 @@ export const getWorker =  async(req, res) => {
     }
 }
 
-export const getDetailWorker = async (req, res) => {
+export const getDetailVerify = async (req, res) => {
     try {
-        const worker = await Worker.findOne({
+        const verify = await Verify.findOne({
             where: {
-                WorkerID: req.params.id
+                VerifyID: req.params.id
             },
             include: [
                 {
-                    model: User,
-                    attributes: {
-                        exclude: ["password"]
-                    }
-                },
-                {
-                    model: WorkerSkill,
+                    model: Worker,
+                    attributes: ["WorkerID", "UserID"],
                     include: [
                         {
-                            model: Skill
+                            model: User,
+                            attributes: {
+                                exclude: ["password"]
+                            }
                         }
                     ]
                 }
@@ -79,7 +72,7 @@ export const getDetailWorker = async (req, res) => {
 
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: worker
+            data: verify
         })
     } catch (error) {
         return res.status(500).json({
@@ -88,9 +81,9 @@ export const getDetailWorker = async (req, res) => {
     }
 }
 
-export const createWorker = async(req, res) => {
+export const createVerify = async(req, res) => {
     try {
-        await Worker.create(req.body)
+        await Verify.create(req.body)
 
         return res.json({
             message: "Berhasil membuat data"
@@ -102,11 +95,11 @@ export const createWorker = async(req, res) => {
     }
 }
 
-export const updateWorker = async(req, res) => {
+export const updateVerify = async(req, res) => {
     try {
-        await Worker.update(req.body, {
+        await Verify.update(req.body, {
             where: {
-                WorkerID: req.params.id
+                VerifyID: req.params.id
             }
         })
 
@@ -120,16 +113,46 @@ export const updateWorker = async(req, res) => {
     }
 }
 
-export const deleteWorker = async(req, res) => {
+export const deleteVerify = async(req, res) => {
     try {
-        await Worker.destroy({
+        await Verify.destroy({
             where: {
-                WorkerID: req.params.id
+                VerifyID: req.params.id
             }
         })
 
         return res.json({
             message: "Berhasil menghapus data"
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: "Terjadi kesalahan pada server"
+        })
+    }
+}
+
+export const handleVerify = async(req, res) => {
+    try {
+        const verify = await Verify.findOne({
+            where: { VerifyID: req.params.id }
+        });
+
+        if (!verify) {
+            return res.status(404).json({ message: "Data tidak ditemukan" });
+        }
+
+        await verify.update(req.body);
+
+        if(req.body.status && req.body.status === "accepted") {
+            await Worker.update({status: "verified"}, {
+                where: {
+                    WorkerID: verify.WorkerID
+                }
+            })
+        }
+
+        return res.json({
+            message: "Berhasil memperbarui kategori"
         })
     } catch (error) {
         return res.status(500).json({

@@ -30,6 +30,14 @@ export default class Job extends Model {
       type: DataTypes.STRING(15),
       allowNull: true
     },
+    rating: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    comment: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     WorkerID: {
       type: DataTypes.UUID,
       allowNull: true,
@@ -70,6 +78,13 @@ export default class Job extends Model {
           { name: "JobID" },
         ]
       },
+      {
+        name: "job_active",
+        fields: ["status"],
+        where: {
+          status: "active"
+        }
+      }
     ]
   });
   }

@@ -26,6 +26,7 @@ import WorkerWallet from './pages/worker/Wallet'
 import WorkerProfile from './pages/worker/Profile'
 import WorkerActivity from './pages/worker/Activity'
 import WorkerHistory from './pages/worker/History'
+import WorkerNotification from './pages/worker/Notifications'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -133,6 +134,11 @@ function AppRoutes() {
       <Route
         path="/worker/history"
         element={<ProtectedRoute allowedRoles={['worker']}><WorkerHistory /></ProtectedRoute>}
+      />
+
+      <Route 
+        path="/worker/notification" 
+        element={<WorkerNotification/>} 
       />
 
       {/* <Route 

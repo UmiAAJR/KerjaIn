@@ -6,8 +6,8 @@ const PanicRoute = express()
 
 PanicRoute.get("/", getPanic)
 PanicRoute.get("/:id", getDetailPanic)
-PanicRoute.post("/", VerifyUser, VerifyAdmin, createPanic)
-PanicRoute.patch("/:id", VerifyUser, VerifyAdmin, updatePanic)
+PanicRoute.post("/", VerifyUser, createPanic)
+PanicRoute.patch("/:id", VerifyUser, updatePanic)
 PanicRoute.delete("/:id", VerifyUser, VerifyAdmin, deletePanic)
 
 export default PanicRoute
