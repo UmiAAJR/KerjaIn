@@ -17,7 +17,8 @@ export const getNotification =  async(req, res) => {
             offset: offset,
 
             where: {
-                ...req.query
+                ...req.query,
+                role: req.user.role
             }
         })
 
@@ -25,6 +26,26 @@ export const getNotification =  async(req, res) => {
             message: "Berhasil mendapatkan data",
             data: notifiaction,
             totalData: totalData
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: "Terjadi kesalahan pada server"
+        })
+    }
+}
+
+export const getLatestNotification = async (req, res) => {
+    try {
+        const notifiaction = await Notification.findOne({
+            order: [
+                ["createdAt", "DESC"]
+            ]
+        })
+        
+        
+        return res.json({
+            message: "Berhasil mendapatkan data",
+            data: notifiaction
         })
     } catch (error) {
         return res.status(500).json({

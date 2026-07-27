@@ -1,6 +1,6 @@
 import express from 'express'
 import { createWorkerSkill, deleteWorkerSkill, getWorkerSkill, getDetailWorkerSkill, updateWorkerSkill } from '../controller/WorkerSkillController.js'
-import { VerifyAdmin, VerifyUser } from '../middleware/UserAuth.js'
+import { VerifyUser } from '../middleware/UserAuth.js'
 
 const WorkerSkillRoute = express()
 

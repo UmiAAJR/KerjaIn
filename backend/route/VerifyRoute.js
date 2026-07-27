@@ -1,14 +1,14 @@
 import express from 'express'
 import { createVerify, deleteVerify, getVerify, getDetailVerify, updateVerify, handleVerify } from '../controller/VerifyController.js'
-import { VerifyAdmin, VerifyUser, VerifyWorker } from '../middleware/UserAuth.js'
+import { CheckRole, VerifyUser } from '../middleware/UserAuth.js'
 
 const VerifyRoute = express()
 
-VerifyRoute.get("/", getVerify)
-VerifyRoute.get("/:id", getDetailVerify)
-VerifyRoute.post("/", VerifyUser, VerifyWorker, createVerify)
-VerifyRoute.patch("/:id", VerifyUser, VerifyWorker, updateVerify)
-VerifyRoute.delete("/:id", VerifyUser, VerifyAdmin, deleteVerify)
-VerifyRoute.patch("/handle", VerifyUser, VerifyAdmin, handleVerify)
+VerifyRoute.get("/", CheckRole(["admin", "worker"]), getVerify)
+VerifyRoute.get("/:id", CheckRole(["admin", "worker"]), getDetailVerify)
+VerifyRoute.post("/", VerifyUser, CheckRole(["admin", "worker"]), createVerify)
+VerifyRoute.patch("/:id", VerifyUser,  CheckRole(["admin", "worker"]), updateVerify)
+VerifyRoute.delete("/:id", VerifyUser,  CheckRole(["admin", "worker"]), deleteVerify)
+VerifyRoute.patch("/handle", VerifyUser,  CheckRole(["admin", "worker"]), handleVerify)
 
 export default VerifyRoute
