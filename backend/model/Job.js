@@ -30,6 +30,14 @@ export default class Job extends Model {
       type: DataTypes.STRING(15),
       allowNull: true
     },
+    rating: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    comment: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
     WorkerID: {
       type: DataTypes.UUID,
       allowNull: true,

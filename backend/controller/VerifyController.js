@@ -36,8 +36,6 @@ export const getVerify =  async(req, res) => {
             ]
         })
 
-        const totalData = await Verify.count()
-
         return res.json({
             message: "Berhasil mendapatkan data",
             data: verify,
