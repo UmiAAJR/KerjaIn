@@ -27,17 +27,17 @@ export default function WorkerNotification() {
 
   return (
     <MobileLayout
-      // topNavProps={{
-      //   variant: "location",
-      //   hasNotification: true,
-      // }}
-      // bottomNavProps={{
-      //   activeTab: "home",
-      // }}
+      topNavProps={{
+        variant: "brand",
+        hasNotification: true,
+      }}
+      bottomNavProps={{
+        activeTab: "home",
+      }}
     >
       <div className="p-4 max-w-md mx-auto bg-slate-50 min-h-screen">
         {/* Title */}
-        <h1 className="text-2xl font-bold text-slate-900 mb-4">Riwayat Pekerjaan</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-4"></h1>
 
         {/* Filter Chips (Horizontal Scrollable) */}
         <div className="flex space-x-2 overflow-x-auto mb-6 pb-2">

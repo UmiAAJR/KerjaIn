@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // 1. Tambahkan useState di sini
+import React, { useState } from 'react'; 
 import { workerApi } from '../../services/api';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
@@ -60,7 +60,7 @@ export default function WorkerActivity() {
   return (
     <MobileLayout
       topNavProps={{
-        variant: "location",
+        variant: "",
         hasNotification: true,
       }}
       bottomNavProps={{

@@ -17,6 +17,7 @@ import WorkerProfile from './pages/worker/Profile'
 import WorkerActivity from './pages/worker/Activity'
 import WorkerHistory from './pages/worker/History'
 import WorkerNotification from './pages/worker/Notifications'
+import WorkerVerification from './pages/worker/Verification'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -133,6 +134,11 @@ function AppRoutes() {
       <Route 
         path="/worker/notification" 
         element={<WorkerNotification/>} 
+      />
+
+      <Route 
+        path="/worker/verification" 
+        element={<WorkerVerification/>} 
       />
 
       {/* <Route 
