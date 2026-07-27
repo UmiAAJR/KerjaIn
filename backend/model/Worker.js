@@ -18,6 +18,14 @@ export default class Worker extends Model {
       type: DataTypes.STRING(15),
       allowNull: true
     },
+    bankNumber: {
+      type: DataTypes.STRING(16),
+      allowNull: true
+    },
+    bankAccount: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
     balance: {
       type: DataTypes.BIGINT,
       allowNull: true
