@@ -29,7 +29,7 @@ const ClientDashboard = () => {
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-
+    
     useEffect(() => {
         clientApi.getDashboard()
             .then(res => {
