@@ -23,8 +23,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setLoading(true);
+    console.log("AuthContext: Attempting login. Using Mock API:", import.meta.env.VITE_USE_MOCK === 'true');
     try {
       const res = await authApi.login(email, password);
+      console.log("AuthContext: login response received:", res);
       if (res && res.token) {
         localStorage.setItem('ki_token', res.token);
         localStorage.setItem('ki_user', JSON.stringify(res.user));

@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
-import AdminLogin from './pages/admin/Login'
+// import AdminLogin from './pages/admin/Login'
 
 // Client Pages
 import ClientDashboard from './pages/client/Dashboard'
@@ -63,7 +63,7 @@ function AppRoutes() {
 
       <Route path='/login' element={<Login />} />
       <Route path='/register' element={<Register />} />
-      <Route path='/admin/login' element={<AdminLogin />} />
+      {/* <Route path='/admin/login' element={<AdminLogin />} /> */}
 
       {/* Client */}
       <Route

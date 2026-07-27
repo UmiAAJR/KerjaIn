@@ -23,17 +23,23 @@ const Login = () => {
         }
         setError('');
         setLoading(true);
+        console.log("Submitting login for:", email, "Role target (UI):", role);
         try {
             const res = await login(email, password);
+            console.log("Login API success. Response:", res);
             // Navigate depending on the actual role returned by backend
             if (res.role === 'admin') {
+                console.log("Redirecting to admin dashboard...");
                 navigate('/admin/dashboard');
             } else if (res.role === 'worker') {
+                console.log("Redirecting to worker dashboard...");
                 navigate('/worker/dashboard');
             } else {
+                console.log("Redirecting to client dashboard...");
                 navigate('/client/dashboard');
             }
-        } catch {
+        } catch (err) {
+            console.error("Login API error:", err);
             setError('Login gagal. Periksa kembali email & password Anda.');
         } finally {
             setLoading(false);
