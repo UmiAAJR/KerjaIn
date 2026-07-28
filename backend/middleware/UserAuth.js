@@ -34,7 +34,7 @@ export const VerifyUser = (req, res, next) => {
 export const CheckRole = (allowedRoles) => {
     return (req, res, next) => {
         
-        const userRole = req.role;
+        const userRole = req.user.role;
 
         if (!userRole) {
             return res.status(401).json({ message: "Akses ditolak. Tidak ada data role." });
