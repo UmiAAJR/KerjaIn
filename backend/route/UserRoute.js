@@ -6,7 +6,7 @@ const UserRouter = express()
 
 UserRouter.post("/login", login)
 UserRouter.post("/register", registerClient)
-UserRouter.patch("/update", updateProfil)
+UserRouter.patch("/update", VerifyUser, updateProfil)
 UserRouter.get("/", VerifyUser, CheckRole(["admin"]), getUser)
 UserRouter.get("/:id", VerifyUser, getDetailUser)
 UserRouter.delete("/:id", VerifyUser, CheckRole(["admin"]), deleteUser)
