@@ -58,14 +58,14 @@ const mockAuthApi = {
         return { token: 'client-token', role: 'client', user: clientProfile };
     },
 
-    register: async (name, email, password, role) => {
+    register: async (name, email, password, role, phoneNumber) => {
         if (role === 'worker') {
             const workers = getData('ki_workers') || [];
             const newWorker = {
                 id: `worker-${Date.now()}`,
                 name,
                 email,
-                phone: '081299998888',
+                phone: phoneNumber || '081299998888',
                 photo: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
                 verified: false,
                 rating: 5.0,
@@ -95,7 +95,7 @@ const mockAuthApi = {
                 photo: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
                 name,
                 email,
-                phone: '081234567890',
+                phone: phoneNumber || '081234567890',
                 latitude: -6.2088,
                 longitude: 106.8456,
                 address: 'Jakarta Selatan'
@@ -189,8 +189,8 @@ const realAuthApi = {
         }
         return res.data;
     },
-    register: async (name, email, password, role) => {
-        const res = await axiosInstance.post('/user/register', { name, email, password, role });
+    register: async (name, email, password, role, phoneNumber) => {
+        const res = await axiosInstance.post('/user/register', { name, email, password, role, phoneNumber });
         if (res.status === 201 || res.data?.message === "Berhasil membuat akun" || res.status === 200) {
             const loginRes = await realAuthApi.login(email, password);
             if (role === 'worker' && loginRes?.token) {

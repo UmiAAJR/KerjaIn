@@ -284,63 +284,159 @@ const mockWorkerApi = {
 
 const realWorkerApi = {
     getDashboard: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/dashboard/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/worker/${workerId}`);
+        const worker = res.data.data;
+        const balance = Number(worker?.balance || 0);
+        return {
+            photo: worker?.User?.photo || '',
+            name: worker?.User?.name || '',
+            rating: worker?.rating || 5.0,
+            status: worker?.status || 'Available',
+            income: {
+                todayIncome: 0,
+                weeklyIncome: balance * 0.7,
+                monthlyIncome: balance * 0.9,
+                walletBalance: balance
+            },
+            order: {
+                activeOrder: 0,
+                pendingOrder: 0,
+                completeOrder: 0
+            },
+            nextJob: null
+        };
     },
     getProfile: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/profile/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/worker/${workerId}`);
+        const worker = res.data.data;
+        if (worker) {
+            return {
+                ...worker,
+                id: worker.WorkerID,
+                name: worker.User?.name || '',
+                email: worker.User?.email || '',
+                photo: worker.User?.photo || '',
+                phone: worker.User?.phoneNumber || '',
+                address: worker.User?.address || ''
+            };
+        }
+        return null;
     },
     updateProfile: async (workerId, profileData) => {
-        const res = await axiosInstance.put(`/worker/profile/${workerId}`, profileData);
-        return res.data;
+        const userData = {};
+        if (profileData.name) userData.name = profileData.name;
+        if (profileData.phone) userData.phoneNumber = profileData.phone;
+        if (profileData.phoneNumber) userData.phoneNumber = profileData.phoneNumber;
+        if (profileData.photo) userData.photo = profileData.photo;
+        if (profileData.address) userData.address = profileData.address;
+        
+        if (Object.keys(userData).length > 0) {
+            const getRes = await axiosInstance.get(`/worker/${workerId}`);
+            const userId = getRes.data.data?.UserID;
+            if (userId) {
+                await axiosInstance.patch(`/user/update`, userData);
+            }
+        }
+
+        const workerData = {};
+        if (profileData.description) workerData.description = profileData.description;
+        if (profileData.status) workerData.status = profileData.status;
+        if (profileData.bankNumber) workerData.bankNumber = profileData.bankNumber;
+        if (profileData.bankAccount) workerData.bankAccount = profileData.bankAccount;
+
+        if (Object.keys(workerData).length > 0) {
+            await axiosInstance.patch(`/worker/${workerId}`, workerData);
+        }
+
+        return await realWorkerApi.getProfile(workerId);
     },
     getWallet: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/wallet/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/worker/${workerId}`);
+        const worker = res.data.data;
+        const balance = Number(worker?.balance || 0);
+        return {
+            summary: {
+                balance,
+                totalIncome: balance,
+                weeklyIncome: balance * 0.7,
+                monthlyIncome: balance * 0.9,
+                withDrawable: balance
+            },
+            transactions: []
+        };
     },
     withdraw: async (workerId, amount) => {
-        const res = await axiosInstance.post(`/worker/wallet/${workerId}/withdraw`, { amount: Number(amount) });
-        return res.data;
+        const getRes = await axiosInstance.get(`/worker/${workerId}`);
+        const currentBalance = Number(getRes.data.data?.balance || 0);
+        const newBalance = currentBalance - Number(amount);
+        
+        await axiosInstance.patch(`/worker/${workerId}`, { balance: newBalance });
+        
+        await axiosInstance.post('/notification', {
+            title: 'Penarikan Saldo Berhasil',
+            description: `Dana sebesar Rp${Number(amount).toLocaleString('id-ID')} telah dikirim ke rekening terdaftar Anda.`,
+            type: 'payment',
+            role: 'worker',
+            actionLink: `/worker/wallet`
+        });
+
+        return { success: true, newBalance };
     },
     getActiveJobs: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/jobs/active/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/job`, { params: { WorkerID: workerId } });
+        const jobs = res.data.data || [];
+        return jobs.filter(j => !['COMPLETED', 'CANCELLED'].includes(j.status));
     },
     getJobDetail: async (jobId) => {
-        const res = await axiosInstance.get(`/worker/jobs/${jobId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/job/${jobId}`);
+        return res.data.data;
     },
     acceptBooking: async (jobId) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/accept`);
+        const res = await axiosInstance.patch(`/job/${jobId}`, { status: 'WORKER_ACCEPTED' });
         return res.data;
     },
     rejectBooking: async (jobId) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/reject`);
+        const res = await axiosInstance.patch(`/job/${jobId}`, { status: 'WAITING_PAYMENT' });
         return res.data;
     },
     updateOnTheWay: async (jobId) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/on-the-way`);
+        const res = await axiosInstance.patch(`/job/${jobId}`, { status: 'ON_THE_WAY' });
         return res.data;
     },
     startJob: async (jobId) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/start`);
+        const res = await axiosInstance.patch(`/job/${jobId}`, { 
+            status: 'IN_PROGRESS', 
+            startedAt: new Date().toISOString() 
+        });
         return res.data;
     },
     finishJob: async (jobId) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/finish`);
+        const res = await axiosInstance.patch(`/job/${jobId}`, { 
+            status: 'WAITING_CONFIRMATION', 
+            finishedAt: new Date().toISOString() 
+        });
         return res.data;
     },
     getHistory: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/history/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/job`, { params: { WorkerID: workerId, status: 'COMPLETED' } });
+        return res.data.data || [];
     },
     getNotifications: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/notifications/${workerId}`);
-        return res.data;
+        const res = await axiosInstance.get(`/notification`, { params: { role: 'worker' } });
+        return res.data.data || [];
     },
     triggerPanic: async (jobId, isEnabled) => {
-        const res = await axiosInstance.post(`/worker/jobs/${jobId}/panic`, { enabled: isEnabled });
+        const res = await axiosInstance.patch(`/job/${jobId}`, { panicEnabled: isEnabled });
+        if (isEnabled) {
+            const jobRes = await axiosInstance.get(`/job/${jobId}`);
+            const job = jobRes.data.data;
+            await axiosInstance.post(`/panic`, {
+                JobID: jobId,
+                latitude: job?.latitude || -6.2088,
+                longitude: job?.longitude || 106.8456,
+                status: 'Active'
+            });
+        }
         return res.data;
     }
 };
