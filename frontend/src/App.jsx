@@ -1,21 +1,47 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import MobileLayout from './components/layout/MobileLayout'
 import SplashScreen from './components/ui/SplashScreen'
 import { LocationProvider } from './context/LocationContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 
 // Auth Pages
 import Login from './pages/auth/Login'
+import Register from './pages/auth/Register'
+
+// Admin Pages
+import AdminLogin from './pages/admin/Login'
+import AdminDashboard from './pages/admin/Dashboard'
+import AdminUsers from './pages/admin/Users'
+import AdminJobs from './pages/admin/Jobs'
+import AdminEscrow from './pages/admin/Escrow'
+import AdminCategories from './pages/admin/Categories'
+import AdminVerification from './pages/admin/Verification'
+import AdminPanic from './pages/admin/Panic'
+import AdminReports from './pages/admin/Reports'
+import AdminNotifications from './pages/admin/Notifications'
 
 // Client Pages
 import ClientDashboard from './pages/client/Dashboard'
-import Register from './pages/auth/Register'
 import Search from './pages/client/Search'
+import ClientHistory from './pages/client/History'
+import ClientProfile from './pages/client/Profile'
+import ClientHistoryDetail from './pages/client/HistoryDetail'
+import WorkerDetail from './pages/client/WorkerDetail'
+import Booking from './pages/client/Booking'
+import EscrowPayment from './pages/client/EscrowPayment'
+import JobTracking from './pages/client/JobTracking'
+
+// Worker Pages
 import WorkerDashboard from './pages/worker/Dashboard'
 import WorkerWallet from './pages/worker/Wallet'
 import WorkerProfile from './pages/worker/Profile'
 import WorkerActivity from './pages/worker/Activity'
 import WorkerHistory from './pages/worker/History'
+import WorkerNotification from './pages/worker/Notifications'
+import WorkerVerification from './pages/worker/Verification'
+import WorkerEditProfile from './pages/worker/EditProfile'
+import WorkerUbahRekening from './pages/worker/UbahRekening'
+import WorkerDetailPekerjaan from './pages/worker/DetailPekerjaan'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -43,90 +69,111 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Root */}
-      {/* <Route 
+      <Route
         path='/'
-        element={}
-      /> */}
+        element={
+          <Navigate to="/login" replace />
+        }
+      />
 
       <Route path='/login' element={<Login />} />
       <Route path='/register' element={<Register />} />
+      {/* <Route path='/admin/login' element={<AdminLogin />} /> */}
 
       {/* Client */}
       <Route
         path='/client/dashboard'
-        element={<ClientDashboard />}
+        element={<ProtectedRoute allowedRoles={['client']}><ClientDashboard /></ProtectedRoute>}
       />
 
       <Route
         path='/client/search'
-        element={<Search />}
-      />
-      
-      {/*
-      <Route 
-        path='/client/worker/:id' 
-        element={}
+        element={<ProtectedRoute allowedRoles={['client']}><Search /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/booking/:workerId' 
-        element={}
+      <Route
+        path='/client/worker/:id'
+        element={<ProtectedRoute allowedRoles={['client']}><WorkerDetail /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/booking/:id/payment' 
-        element={}
+      <Route
+        path='/client/booking/:workerId'
+        element={<ProtectedRoute allowedRoles={['client']}><Booking /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/tracking/:jobId' 
-        element={}
+      <Route
+        path='/client/booking/:jobId/payment'
+        element={<ProtectedRoute allowedRoles={['client']}><EscrowPayment /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/history' 
-        element={}
+      <Route
+        path='/client/tracking/:jobId'
+        element={<ProtectedRoute allowedRoles={['client']}><JobTracking /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/notifications' 
-        element={}
+      <Route
+        path='/client/history'
+        element={<ProtectedRoute allowedRoles={['client']}><ClientHistory /></ProtectedRoute>}
       />
 
-      <Route 
-        path='/client/profile' 
-        element={}
-      /> */}
+      <Route
+        path='/client/history/:jobId'
+        element={<ProtectedRoute allowedRoles={['client']}><ClientHistoryDetail /></ProtectedRoute>}
+      />
+
+      <Route
+        path='/client/profile'
+        element={<ProtectedRoute allowedRoles={['client']}><ClientProfile /></ProtectedRoute>}
+      />
 
       {/* Worker */}
-      {/* <Route 
-        path="/worker/dashboard" 
-        element={<WorkerDashboard/>} 
-      /> */}
-
-      <Route 
-        path="/worker/dashboard" 
-        element={<WorkerDashboard/>} 
+      <Route
+        path="/worker/dashboard"
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerDashboard /></ProtectedRoute>}
       />
-      <Route 
-        path="/worker/wallet" 
-        element={<WorkerWallet/>} 
+      <Route
+        path="/worker/wallet"
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerWallet /></ProtectedRoute>}
       />
 
+      <Route
+        path="/worker/profile"
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerProfile /></ProtectedRoute>}
+      />
+
+      <Route
+        path="/worker/activity"
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerActivity /></ProtectedRoute>}
+      />
+
+      <Route
+        path="/worker/history"
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerHistory /></ProtectedRoute>}
+      />
+
       <Route 
-        path="/worker/profile" 
-        element={<WorkerProfile/>} 
+        path="/worker/notification" 
+        element={<WorkerNotification/>} 
+      />
+
+      <Route 
+        path="/worker/verification" 
+        element={<WorkerVerification/>} 
       />
 
         <Route 
-        path="/worker/activity" 
-        element={<WorkerActivity/>} 
+        path="/worker/editprofile" 
+        element={<WorkerEditProfile/>} 
       />
 
         <Route 
-        path="/worker/history" 
-        element={<WorkerHistory/>} 
+        path="/worker/ubahrekening" 
+        element={<WorkerUbahRekening/>} 
+      />
+
+        <Route 
+        path="/worker/detailpekerjaan" 
+        element={<WorkerDetailPekerjaan/>} 
       />
 
       {/* <Route 
@@ -160,48 +207,46 @@ function AppRoutes() {
       /> */}
 
       {/* Admin */}
-      {/* <Route 
+      <Route path='/admin/login' element={<AdminLogin />} />
+      <Route 
         path="/admin/dashboard" 
-        element={} 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} 
       />
-
       <Route 
-        path="/admin/clients" 
-        element={} 
+        path="/admin/users" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} 
       />
-
       <Route 
-        path="/admin/workers" 
-        element={} 
+        path="/admin/jobs" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminJobs /></ProtectedRoute>} 
       />
-
-      <Route 
-        path="/admin/workers/verification" 
-        element={} 
-      />
-
-      <Route 
-        path="/admin/reports" 
-        element={} 
-      />
-
-      <Route 
-        path="/admin/panic" 
-        element={} 
-      />
-
       <Route 
         path="/admin/escrow" 
-        element={} 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminEscrow /></ProtectedRoute>} 
       />
-
       <Route 
         path="/admin/categories" 
-        element={} 
-      /> */}
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminCategories /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/verification" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminVerification /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/panic" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminPanic /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/reports" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminReports /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/notifications" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminNotifications /></ProtectedRoute>} 
+      />
 
       {/* Fallback */}
-      {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+      <Route path="*" element={<Navigate to="/" replace />} />
 
 
 
@@ -216,10 +261,12 @@ function App() {
 
   return (
     <LocationProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+        </BrowserRouter>
+      </AuthProvider>
     </LocationProvider>
   )
 }

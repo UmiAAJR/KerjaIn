@@ -1,10 +1,50 @@
 // Seed data and initial state of the application
 export const INITIAL_CATEGORIES = [
-    { id: 'cat-1', nama: 'Buruh Harian', icon: 'Hammer' },
-    { id: 'cat-2', nama: 'Asisten Rumah Tangga', icon: 'Home' },
-    { id: 'cat-3', nama: 'Montir Panggilan', icon: 'Wrench' },
-    { id: 'cat-4', nama: 'Tukang Kayu/Bangunan', icon: 'Construction' },
-    { id: 'cat-5', nama: 'Jasa Serabutan', icon: 'Layers' }
+    { 
+        id: 'cat-1', 
+        nama: 'Buruh Harian', 
+        icon: 'Hammer',
+        skills: [
+            { id: 'sk-1', name: 'Instalasi Listrik' },
+            { id: 'sk-2', name: 'Plumbing / Pipa Bocor' },
+            { id: 'sk-3', name: 'Pengecatan Tembok' }
+        ]
+    },
+    { 
+        id: 'cat-2', 
+        nama: 'Asisten Rumah Tangga', 
+        icon: 'Home',
+        skills: [
+            { id: 'sk-4', name: 'Bersih Rumah Harian' },
+            { id: 'sk-5', name: 'Menyetrika & Mencuci' }
+        ]
+    },
+    { 
+        id: 'cat-3', 
+        nama: 'Montir Panggilan', 
+        icon: 'Wrench',
+        skills: [
+            { id: 'sk-6', name: 'Service AC' },
+            { id: 'sk-7', name: 'Perbaikan Mesin Cuci' }
+        ]
+    },
+    { 
+        id: 'cat-4', 
+        nama: 'Tukang Kayu/Bangunan', 
+        icon: 'Construction',
+        skills: [
+            { id: 'sk-8', name: 'Pemasangan Keramik' },
+            { id: 'sk-9', name: 'Perbaikan Atap / Genteng' }
+        ]
+    },
+    { 
+        id: 'cat-5', 
+        nama: 'Jasa Serabutan', 
+        icon: 'Layers',
+        skills: [
+            { id: 'sk-10', name: 'Layanan Umum' }
+        ]
+    }
 ];
 
 export const INITIAL_CLIENT_PROFILE = {
@@ -162,7 +202,7 @@ export const INITIAL_JOBS = [
         startedAt: '2026-07-16 10:15',
         finishedAt: '2026-07-16 11:45',
         price: 52500, // 1.5 jam * 35000
-        status: 'Finished', // Booking, Escrow Paid, Worker Accepted, On The Way, In Progress, Waiting Confirmation, Finished, Rejected
+        status: 'COMPLETED', // WAITING_PAYMENT, ESCROW_PAID, WORKER_ACCEPTED, ON_THE_WAY, IN_PROGRESS, WAITING_CONFIRMATION, COMPLETED, CANCELLED
         escrowStatus: 'Released', // Holding, Released, Refunded
         address: 'Jl. Sudirman No. 12, Jakarta Selatan',
         description: 'Pipa air di kamar mandi utama bocor dan air merembes ke tembok.',
@@ -172,6 +212,50 @@ export const INITIAL_JOBS = [
         currentLatitude: -6.2088,
         currentLongtitude: 106.8456,
         emergencyPhone: '112',
+        panicEnabled: false
+    },
+    {
+        jobId: 'job-102',
+        workerId: 'worker-2',
+        workerName: 'Siti Aminah',
+        workerPhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150',
+        clientId: 'client-1',
+        clientName: 'Budi Santoso',
+        clientPhone: '081234567890',
+        clientPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+        service: 'Bersih Rumah Harian',
+        jobCategory: 'Asisten Rumah Tangga',
+        date: '2026-07-27',
+        schedule: '2026-07-27 14:00',
+        price: 150000,
+        status: 'WAITING_PAYMENT',
+        escrowStatus: 'Pending',
+        paymentProof: 'https://images.unsplash.com/photo-1601597111158-2fceff270190?auto=format&fit=crop&q=80&w=300',
+        address: 'Pondok Indah, Jakarta Selatan',
+        description: 'Membersihkan rumah tinggal 2 lantai, menyapu, mengepel, membersihkan debu perabotan.',
+        panicEnabled: false
+    },
+    {
+        jobId: 'job-103',
+        workerId: 'worker-3',
+        workerName: 'Agus Pratama',
+        workerPhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150',
+        clientId: 'client-1',
+        clientName: 'Budi Santoso',
+        clientPhone: '081234567890',
+        clientPhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+        service: 'Perbaikan Pagar Besi',
+        jobCategory: 'Tukang Kayu/Bangunan',
+        date: '2026-07-28',
+        schedule: '2026-07-28 09:00',
+        startedAt: '2026-07-28 09:10',
+        finishedAt: '2026-07-28 12:00',
+        price: 300000,
+        status: 'COMPLETED',
+        escrowStatus: 'Holding',
+        address: 'Kemang, Jakarta Selatan',
+        description: 'Melakukan pengelasan engsel pagar besi yang copot dan mengecat ulang karat.',
+        rating: 5,
         panicEnabled: false
     }
 ];

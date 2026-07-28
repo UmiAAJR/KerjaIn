@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientApi } from '../../services/api';
 import MobileLayout from '../../components/layout/MobileLayout';
@@ -10,13 +10,9 @@ import {
     SlidersHorizontal,
     Star,
     Compass,
-    ShieldCheck,
     Check,
     ChevronDown,
-    Bell,
-    Wallet,
-    MessageSquare,
-    Map
+    MessageSquare
 } from 'lucide-react';
 
 const Search = () => {
@@ -34,6 +30,7 @@ const Search = () => {
 
     // Sync category param change
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCategory(searchParams.get('category') || '');
     }, [searchParams]);
 
@@ -50,8 +47,9 @@ const Search = () => {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         handleSearch();
-    }, [keyword, category, rating, radius, searchParams]);
+    }, [keyword, category, rating, radius, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const applyFilters = () => {
         setIsFilterOpen(false);
@@ -67,60 +65,12 @@ const Search = () => {
     };
 
     const mapSearchWorker = (worker) => {
-        if (worker.id === 'worker-1') {
-            return {
-                ...worker,
-                name: 'Budi Setiawan',
-                roleName: 'Tukang Bangunan Ahli',
-                distanceText: '1.2 km dari lokasi',
-                priceText: 'Rp 150.000/hari',
-                ratingVal: '4.9',
-                experience: '8 Tahun',
-                verified: true
-            };
-        }
-        if (worker.id === 'worker-2') {
-            return {
-                ...worker,
-                name: 'Siti Aminah',
-                roleName: 'Asisten Rumah Tangga',
-                distanceText: '2.5 km dari lokasi',
-                priceText: 'Rp 85.000/shift',
-                ratingVal: '4.8',
-                experience: '4 Tahun',
-                verified: true
-            };
-        }
-        if (worker.id === 'worker-3') {
-            return {
-                ...worker,
-                name: 'Andi Pratama',
-                roleName: 'Teknisi Listrik & AC',
-                distanceText: '0.8 km dari lokasi',
-                priceText: 'Rp 120.000/kunjungan',
-                ratingVal: '4.7',
-                experience: '12 Tahun',
-                verified: false
-            };
-        }
-        if (worker.id === 'worker-4') {
-            return {
-                ...worker,
-                name: 'Rahmat Hidayat',
-                roleName: 'Tukang Kebun',
-                distanceText: '3.1 km dari lokasi',
-                priceText: 'Rp 100.000/hari',
-                ratingVal: '4.6',
-                experience: '5 Tahun',
-                verified: true
-            };
-        }
         return {
             ...worker,
             roleName: worker.skills[0]?.skillName || 'Pekerja Serabutan',
             distanceText: `${worker.distance} km dari lokasi`,
             priceText: `Rp ${(worker.hourlyRate * 8).toLocaleString('id-ID')}/hari`,
-            ratingVal: worker.rating.toFixed(1),
+            ratingVal: typeof worker.rating === 'number' ? worker.rating.toFixed(1) : '5.0',
             experience: `${worker.experienceYear || 2} Tahun`,
             verified: worker.verified
         };
