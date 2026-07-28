@@ -100,9 +100,10 @@ export const updateProfil = async(req, res) => {
     try {
 
         if(req.body.photo) {
-            axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.photo}).then((resp) => {
-                req.body.photo = resp.display_url
-            })
+            const formData = new URLSearchParams();
+            formData.append("image", req.body.photo)
+            const resp = await axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, formData)
+            req.body.photo = resp.display_url
         }
 
         await User.update(req.body, {

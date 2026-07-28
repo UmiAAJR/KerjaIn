@@ -90,13 +90,16 @@ export const getDetailVerify = async (req, res) => {
 
 export const createVerify = async (req, res) => {
     try {
-        axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.ktpPhoto}).then((resp) => {
-            req.body.ktpPhoto = resp.display_url
-        })
-        
-        axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.selfiePhoto}).then((resp) => {
-            req.body.selfiePhoto = resp.display_url
-        })
+
+        const formDataKtp = new URLSearchParams();
+        formData.append("image", req.body.photo)
+        const resKtp = await axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, formDataKtp)
+        req.body.ktpPhoto = resKtp.display_url
+
+        const formDataSelfie = new URLSearchParams();
+        formData.append("image", req.body.selfiePhoto)
+        const resSelfie = await axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, formDataSelfie)
+        req.body.selfiePhoto= resSelfie.display_url
 
         await Verify.create(req.body)
 
