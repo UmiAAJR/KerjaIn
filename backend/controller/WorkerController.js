@@ -11,8 +11,8 @@ const WorkerSkill = model.WorkerSkill
 export const getWorker = async (req, res) => {
     try {
         const perPage = req.query.perPage ?? 10
-        const totalData = await Worker.count()
         let page = req.query.page ?? 1
+        const totalData = await Worker.count()
         let offset = (page - 1) * perPage
 
         const worker = await Worker.findAll({
