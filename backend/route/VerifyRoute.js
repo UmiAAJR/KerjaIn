@@ -9,6 +9,6 @@ VerifyRoute.get("/:id", CheckRole(["admin", "worker"]), getDetailVerify)
 VerifyRoute.post("/", VerifyUser, CheckRole(["admin", "worker"]), createVerify)
 VerifyRoute.patch("/:id", VerifyUser,  CheckRole(["admin", "worker"]), updateVerify)
 VerifyRoute.delete("/:id", VerifyUser,  CheckRole(["admin", "worker"]), deleteVerify)
-VerifyRoute.patch("/handle", VerifyUser,  CheckRole(["admin", "worker"]), handleVerify)
+VerifyRoute.patch("/handle/:id", VerifyUser,  CheckRole(["admin", "worker"]), handleVerify)
 
 export default VerifyRoute
