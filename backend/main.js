@@ -10,8 +10,10 @@ import VerifyRoute from './route/VerifyRoute.js';
 import WorkerSkillRoute from './route/WorkerSkillRoute.js';
 import JobRoute from './route/JobRoute.js';
 import PaymentRoute from './route/PaymentRoute.js';
+import cors from 'cors'
 
 const app = express();
+app.use(cors())
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
