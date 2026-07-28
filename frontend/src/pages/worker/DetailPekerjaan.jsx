@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { workerApi } from '../../services/api'; // Sesuaikan lokasi api service kamu
 import MobileLayout from "../../components/layout/MobileLayout";
-import { 
-  ArrowLeft, 
-  User, 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  Wrench, 
-  FileText, 
-  Phone, 
-  MessageSquare, 
-  CheckCircle2, 
-  XCircle, 
+import {
+  ArrowLeft,
+  User,
+  MapPin,
+  Calendar,
+  Clock,
+  Wrench,
+  FileText,
+  Phone,
+  MessageSquare,
+  CheckCircle2,
+  XCircle,
   Loader2,
   Navigation
 } from 'lucide-react';
@@ -79,11 +79,11 @@ export default function WorkerDetailPekerjaan() {
       }}
     >
       <div className="flex flex-col space-y-4 p-4 pb-24 w-full max-w-md mx-auto">
-        
+
         {/* TOP BAR / NAVIGASI KEMBALI */}
         <div className="flex items-center gap-3 pt-1">
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => navigate(`/worker/activity`)}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 transition"
           >
@@ -111,13 +111,13 @@ export default function WorkerDetailPekerjaan() {
 
           {/* Akses Cepat Hubungi Client */}
           <div className="flex items-center gap-2">
-            <a 
+            <a
               href={`tel:${jobDetail?.clientPhone}`}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E8F0FE] text-[#1A73E8] hover:bg-[#D2E3FC] transition"
             >
               <Phone className="h-4 w-4" />
             </a>
-            <a 
+            <a
               href={`https://wa.me/${jobDetail?.clientPhone}`}
               target="_blank"
               rel="noreferrer"
@@ -130,14 +130,13 @@ export default function WorkerDetailPekerjaan() {
 
         {/* ==================== 2. KARTU DETAIL PEKERJAAN ==================== */}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-4">
-          
+
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h4 className="text-base font-extrabold text-slate-900">Rincian Tugas</h4>
-            <span className={`rounded-md px-2.5 py-1 text-[10px] font-black tracking-wide ${
-              jobDetail?.status === 'ACCEPTED' ? 'bg-[#76E7B1] text-[#004852]' :
-              jobDetail?.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-              'bg-[#FDE3C2] text-[#7A4B00]'
-            }`}>
+            <span className={`rounded-md px-2.5 py-1 text-[10px] font-black tracking-wide ${jobDetail?.status === 'ACCEPTED' ? 'bg-[#76E7B1] text-[#004852]' :
+                jobDetail?.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                  'bg-[#FDE3C2] text-[#7A4B00]'
+              }`}>
               {jobDetail?.status || 'MENUNGGU KONFIRMASI'}
             </span>
           </div>
@@ -192,9 +191,9 @@ export default function WorkerDetailPekerjaan() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-400">Alamat Pengerjaan</p>
-                <a 
-                  href={`https://maps.google.com/?q=${encodeURIComponent(jobDetail?.address || "")}`} 
-                  target="_blank" 
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(jobDetail?.address || "")}`}
+                  target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1 text-[11px] font-bold text-[#007088] hover:underline"
                 >
