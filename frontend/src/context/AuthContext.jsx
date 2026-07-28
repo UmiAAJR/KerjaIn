@@ -48,10 +48,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, role) => {
+  const register = async (name, email, password, role, phoneNumber) => {
     setLoading(true);
     try {
-      const res = await authApi.register(name, email, password, role);
+      const res = await authApi.register(name, email, password, role, phoneNumber);
       if (res && res.token) {
         localStorage.setItem('ki_token', res.token);
         localStorage.setItem('ki_user', JSON.stringify(res.user));
