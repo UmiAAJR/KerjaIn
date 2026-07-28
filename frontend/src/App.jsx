@@ -38,6 +38,10 @@ import WorkerProfile from './pages/worker/Profile'
 import WorkerActivity from './pages/worker/Activity'
 import WorkerHistory from './pages/worker/History'
 import WorkerNotification from './pages/worker/Notifications'
+import WorkerVerification from './pages/worker/Verification'
+import WorkerEditProfile from './pages/worker/EditProfile'
+import WorkerUbahRekening from './pages/worker/UbahRekening'
+import WorkerDetailPekerjaan from './pages/worker/DetailPekerjaan'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -150,6 +154,26 @@ function AppRoutes() {
       <Route 
         path="/worker/notification" 
         element={<WorkerNotification/>} 
+      />
+
+      <Route 
+        path="/worker/verification" 
+        element={<WorkerVerification/>} 
+      />
+
+        <Route 
+        path="/worker/editprofile" 
+        element={<WorkerEditProfile/>} 
+      />
+
+        <Route 
+        path="/worker/ubahrekening" 
+        element={<WorkerUbahRekening/>} 
+      />
+
+        <Route 
+        path="/worker/detailpekerjaan" 
+        element={<WorkerDetailPekerjaan/>} 
       />
 
       {/* <Route 

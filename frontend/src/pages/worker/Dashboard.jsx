@@ -1,15 +1,63 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 import { workerApi } from '../../services/api';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
-import { useMap } from 'react-leaflet/hooks'
 import {
   TrendingUp, History, Zap, ClipboardCheck, Clock, Timer, Star, Calendar, MapPin
-
 } from 'lucide-react';
 import { Marker, Popup, MapContainer, TileLayer } from 'react-leaflet';
 
 export default function WorkerDashboard() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(null);
+
+  // Fungsi helper format rupiah
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0
+    }).format(number || 0);
+  };
+
+  useEffect(() => {
+    // Ambil workerId dari localStorage, auth state, atau dummy ID untuk testing
+    const currentWorkerId = localStorage.getItem('workerId') || 'worker-1';
+
+    setLoading(true);
+    workerApi.getDashboard(currentWorkerId)
+      .then(res => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Gagal mengambil data dashboard:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return (
+      <MobileLayout>
+        <div className="flex items-center justify-center h-screen">
+          <p className="text-gray-500 font-medium">Memuat data dashboard...</p>
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <MobileLayout>
+        <div className="p-5 text-center text-red-500">
+          Gagal memuat data pekerja.
+        </div>
+      </MobileLayout>
+    );
+  }
+
+  const { name, income, order, nextJob } = data;
 
   return (
     <MobileLayout
@@ -25,10 +73,10 @@ export default function WorkerDashboard() {
         {/* Heading */}
         <div>
           <h2 className="text-2xl font-black text-primary-600 font-heading tracking-tight leading-tight">
-            Halo, AAJR
+            Halo, {name || 'Pekerja'}!
           </h2>
           <h3 className="text-sm text-gray-500">
-            siap untuk menyelesaikan pekerjaan hari ini ?
+            Siap untuk menyelesaikan pekerjaan hari ini?
           </h3>
         </div>
 
@@ -37,7 +85,7 @@ export default function WorkerDashboard() {
           <div className="relative z-10">
             <p className="text-md font-medium text-cyan-100/80">Saldo Anda</p>
             <h2 className="mt-2 mb-4 text-3xl font-bold tracking-tight leading-tight text-white">
-              Rp 2.500.000
+              {formatRupiah(income?.walletBalance)}
             </h2>
 
             {/* Tombol Tarik Dana & Riwayat */}
@@ -47,6 +95,7 @@ export default function WorkerDashboard() {
               </Link>
 
               <button
+                onClick={() => navigate('/worker/wallet')}
                 className="flex items-center justify-center rounded-xl border border-white/40 p-3 text-white transition hover:bg-white/10 active:scale-95"
                 aria-label="Riwayat Transaksi"
               >
@@ -58,7 +107,6 @@ export default function WorkerDashboard() {
 
         {/* RINGKASAN PENDAPATAN */}
         <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-[#F3F6FD] p-5 shadow-sm">
-          {/* Header Ringkasan */}
           <div className="mb-5 flex items-center justify-between">
             <span className="text-xs font-bold tracking-wider text-slate-500 uppercase">
               RINGKASAN PENDAPATAN
@@ -72,11 +120,8 @@ export default function WorkerDashboard() {
             <div className="flex flex-col items-center justify-center px-1">
               <p className="text-xs font-medium text-slate-600">Hari Ini</p>
               <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  350k
+                <p className="text-sm font-extrabold leading-tight text-gray-900">
+                  {formatRupiah(income?.todayIncome)}
                 </p>
               </div>
             </div>
@@ -85,11 +130,8 @@ export default function WorkerDashboard() {
             <div className="flex flex-col items-center justify-center px-1">
               <p className="text-xs font-medium text-slate-600">Minggu Ini</p>
               <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-gray-900">
-                  1.8M
+                <p className="text-sm font-extrabold leading-tight text-gray-900">
+                  {formatRupiah(income?.weeklyIncome)}
                 </p>
               </div>
             </div>
@@ -98,122 +140,106 @@ export default function WorkerDashboard() {
             <div className="flex flex-col items-center justify-center px-1">
               <p className="text-xs font-medium text-slate-600">Bulan Ini</p>
               <div className="mt-1 text-center">
-                <p className="text-xl font-extrabold leading-tight text-[#005B66]">
-                  Rp
-                </p>
-                <p className="text-xl font-extrabold leading-tight text-[#005B66]">
-                  5.2M
+                <p className="text-sm font-extrabold leading-tight text-[#005B66]">
+                  {formatRupiah(income?.monthlyIncome)}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Container Scroll Horizontal */}
-
-        <div className="no-scrollbar overflow-x-auto flex items-center gap-3.5 ">
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
+        {/* Container Scroll Horizontal Stats */}
+        <div className="no-scrollbar overflow-x-auto flex items-center gap-3.5">
+          {/* Order Aktif */}
+          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-4 items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fea619] text-white">
+              <Zap className="h-5 w-5" />
             </div>
-            <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
-            </div>
-          </div>
-
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
-            </div>
-            <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
+            <div className="pl-3">
+              <span className="text-xl font-bold leading-tight">{order?.activeOrder || 0}</span>
+              <p className="text-xs font-medium text-gray-700">Order Aktif</p>
             </div>
           </div>
 
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#fea619]">
-              <Zap className="h-6 w-6" />
+          {/* Pending Order */}
+          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#e0f2fe] border border-[#bae6fd] p-4 items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0284c7] text-white">
+              <Clock className="h-5 w-5" />
             </div>
-            <div>
-              <span className="text-2xl font-bold leading-tight pl-4">2</span>
-              <p className="text-xs font-medium text-black-100/80 pl-4">Order Aktif</p>
+            <div className="pl-3">
+              <span className="text-xl font-bold leading-tight">{order?.pendingOrder || 0}</span>
+              <p className="text-xs font-medium text-gray-700">Menunggu</p>
+            </div>
+          </div>
+
+          {/* Order Selesai */}
+          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#dcfce7] border border-[#86efac] p-4 items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#16a34a] text-white">
+              <ClipboardCheck className="h-5 w-5" />
+            </div>
+            <div className="pl-3">
+              <span className="text-xl font-bold leading-tight">{order?.completeOrder || 0}</span>
+              <p className="text-xs font-medium text-gray-700">Selesai</p>
             </div>
           </div>
         </div>
 
         {/* PEKERJAAN SELANJUTNYA */}
-        <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-
-          {/* 1. BADGE JAM */}
-          <div className="absolute top-0 right-0 rounded-bl-xl bg-[#F9A825] px-3 py-1">
-            <span className="text-xs font-bold text-[#5D3A00]">
-              Mulai 14:00
-            </span>
-          </div>
-
-          {/* 2. ROW 1: HEADER PROFIL */}
-          <div className="flex items-center gap-3 pt-1">
-            {/* Col 1: Foto Profil */}
-            <img
-              src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"
-              alt="Pak Hermawan"
-              className="h-16 w-16 rounded-xl object-cover"
-            />
-
-            {/* Col 2: Info Pekerja */}
-            <div className="flex flex-col justify-center">
-              <span className="text-xs font-bold text-[#005B66]">
-                Cleaning Service Pro
+        {nextJob ? (
+          <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+            <div className="absolute top-0 right-0 rounded-bl-xl bg-[#F9A825] px-3 py-1">
+              <span className="text-xs font-bold text-[#5D3A00]">
+                Mulai {nextJob.schedule || 'Segera'}
               </span>
-              <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                Pak Hermawan
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-slate-600 font-medium mt-0.5">
-                <Star className="h-3.5 w-3.5 fill-slate-800 text-slate-800" />
-                <span>4.9 (Top Client)</span>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <img
+                src={data.photo || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"}
+                alt={nextJob.clientName}
+                className="h-16 w-16 rounded-xl object-cover"
+              />
+
+              <div className="flex flex-col justify-center">
+                <span className="text-xs font-bold text-[#005B66]">
+                  {nextJob.service}
+                </span>
+                <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
+                  {nextJob.clientName}
+                </h3>
+                <div className="flex items-center gap-1 text-xs text-slate-600 font-medium mt-0.5">
+                  <Star className="h-3.5 w-3.5 fill-slate-800 text-slate-800" />
+                  <span>{data.rating || 5.0} (Top Client)</span>
+                </div>
               </div>
             </div>
+
+            <div className="border-b border-slate-200/80 my-1" />
+
+            <div className="flex items-center gap-3 text-slate-700">
+              <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
+              <span className="text-sm font-semibold">{nextJob.schedule}</span>
+            </div>
+
+            <div className="flex items-center gap-3 text-slate-700">
+              <MapPin className="h-5 w-5 text-slate-500 shrink-0" />
+              <span className="text-sm font-semibold">{nextJob.location}</span>
+            </div>
+
+            <button 
+              onClick={() => navigate('/worker/jobs')}
+              className="mt-2 w-full rounded-xl bg-[#005B66] py-3 text-center text-sm font-bold text-white transition hover:bg-[#004852] active:scale-[0.98]"
+            >
+              Lihat Detail Pekerjaan
+            </button>
           </div>
-
-          {/* 3. GARIS PEMISAH */}
-          <div className="border-b border-slate-200/80 my-1" />
-
-          {/* 4. ROW 2: TANGGAL */}
-          <div className="flex items-center gap-3 text-slate-700">
-            <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
-            <span className="text-sm font-semibold">Selasa, 24 Okt 2023</span>
+        ) : (
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center text-gray-500 text-sm">
+            Tidak ada pekerjaan mendatang saat ini.
           </div>
+        )}
 
-          {/* 5. ROW 3: LOKASI */}
-          <div className="flex items-center gap-3 text-slate-700">
-            <MapPin className="h-5 w-5 text-slate-500 shrink-0" />
-            <span className="text-sm font-semibold">Pondok Indah, Jakarta Selatan</span>
-          </div>
-
-          {/* 6. ROW 4: TOMBOL AKSI */}
-          <button className="mt-2 w-full rounded-xl bg-[#005B66] py-3 text-center text-sm font-bold text-white transition hover:bg-[#004852] active:scale-[0.98]">
-            Lihat Detail Pekerjaan
-          </button>
-
-
-        </div>
-        <MapContainer attributionControl className='w-full h-60' center={[-7.2575, 112.7521]} zoom={13} scrollWheelZoom={false}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker  position={[ -7.2575, 112.7521]}>
-            <Popup>
-              A pretty CSS3 popup. <br /> Easily customizable.
-            </Popup>
-          </Marker>
-        </MapContainer>
-
-
-
-
+        
 
       </div>
     </MobileLayout>
