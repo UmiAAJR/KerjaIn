@@ -8,13 +8,13 @@ const mockAdminApi = {
         const workers = getData('ki_workers') || [];
         const jobs = getData('ki_jobs') || [];
         const totalWorker = workers.length;
-        const verifiedWorker = workers.filter(w => w.verified).length;
+        const verifiedWorker = workers.filter(w => w.ktpStatus === 'Verified' || w.verified).length;
         const pendingWorker = workers.filter(w => w.ktpStatus === 'Pending').length;
         const totalClient = 45;
         const activeJob = jobs.filter(j => ['WORKER_ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'WAITING_CONFIRMATION'].includes(j.status)).length;
         const completedJob = jobs.filter(j => j.status === 'COMPLETED').length;
-        const escrowHolding = jobs.filter(j => j.escrowStatus === 'Holding').reduce((acc, curr) => acc + curr.price, 0);
-        const escrowReleased = jobs.filter(j => j.escrowStatus === 'Released').reduce((acc, curr) => acc + curr.price, 0);
+        const escrowHolding = jobs.filter(j => j.escrowStatus === 'Holding').reduce((acc, curr) => acc + (curr.price || curr.amount || 0), 0);
+        const escrowReleased = jobs.filter(j => j.escrowStatus === 'Released').reduce((acc, curr) => acc + (curr.price || curr.amount || 0), 0);
         const activePanic = jobs.filter(j => j.panicEnabled).length;
         const todayRevenue = escrowReleased * 0.1;
 
@@ -37,9 +37,9 @@ const mockAdminApi = {
     getClients: async () => {
         const clientProfile = getData('ki_client_profile') || { name: 'Budi Santoso', phone: '081234567890', photo: '' };
         return [
-            { userId: 'client-1', name: clientProfile.name, role: 'Client', verified: true, phone: clientProfile.phone, joinedAt: '2026-06-01', status: 'Active', photo: clientProfile.photo },
-            { userId: 'client-2', name: 'Ani Yudhoyono', role: 'Client', verified: true, phone: '081299998811', joinedAt: '2026-06-15', status: 'Active', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150' },
-            { userId: 'client-3', name: 'Andi Mallarangeng', role: 'Client', verified: false, phone: '081299992222', joinedAt: '2026-07-01', status: 'Suspended', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150' }
+            { id: 'client-1', UserID: 'client-1', name: clientProfile.name, role: 'Client', verified: true, phone: clientProfile.phone, joinedAt: '2026-06-01', status: 'Active', photo: clientProfile.photo, address: clientProfile.address },
+            { id: 'client-2', UserID: 'client-2', name: 'Ani Yudhoyono', role: 'Client', verified: true, phone: '081299998811', joinedAt: '2026-06-15', status: 'Active', photo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=150', address: 'Jakarta Pusat' },
+            { id: 'client-3', UserID: 'client-3', name: 'Andi Mallarangeng', role: 'Client', verified: false, phone: '081299992222', joinedAt: '2026-07-01', status: 'Suspended', photo: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150', address: 'Kebayoran Baru, Jakarta' }
         ];
     },
 
@@ -49,32 +49,37 @@ const mockAdminApi = {
 
     getWorkerVerificationList: async () => {
         const workers = getData('ki_workers') || [];
-        return workers.filter(w => w.ktpStatus === 'Pending' || w.ktpStatus === 'Verified').map(w => ({
-            workerId: w.id,
+        return workers.filter(w => w.ktpStatus === 'Pending' || w.ktpStatus === 'Verified' || w.ktpStatus === 'Rejected').map(w => ({
+            id: w.id,
+            VerifyID: `ver-${w.id}`,
+            WorkerID: w.id,
             photo: w.photo,
             name: w.name,
+            email: w.email,
             ktpPhoto: w.ktpPhoto,
             selfiePhoto: w.selfiePhoto,
-            status: w.ktpStatus,
-            submittedAt: '2026-07-16 12:00'
+            status: w.ktpStatus || 'Pending',
+            ktpStatus: w.ktpStatus || 'Pending',
+            submittedAt: w.submittedAt || '2026-07-16 12:00'
         }));
     },
 
     verifyWorker: async (workerId, status) => {
         const workers = getData('ki_workers') || [];
-        const idx = workers.findIndex(w => w.id === workerId);
+        const idx = workers.findIndex(w => w.id === workerId || `ver-${w.id}` === workerId);
         if (idx === -1) throw new Error('Worker tidak ditemukan');
 
         workers[idx].ktpStatus = status;
-        workers[idx].verified = status === 'Verified';
+        workers[idx].verified = status === 'Verified' || status === 'accepted';
         setData('ki_workers', workers);
 
         const notifs = getData('ki_notifications') || [];
         notifs.push({
+            NotificationID: `notif-${Date.now()}`,
             notificationId: `notif-${Date.now()}`,
-            userId: workerId,
-            title: status === 'Verified' ? 'Akun Anda Terverifikasi!' : 'Verifikasi Akun Ditolak',
-            description: status === 'Verified'
+            userId: workers[idx].id,
+            title: status === 'Verified' || status === 'accepted' ? 'Akun Anda Terverifikasi!' : 'Verifikasi Akun Ditolak',
+            description: status === 'Verified' || status === 'accepted'
                 ? 'Selamat, identitas Anda telah diverifikasi oleh Admin. Anda kini mendapat lencana verified.'
                 : 'Verifikasi KTP Anda ditolak karena foto kurang jelas. Silakan ajukan ulang.',
             type: 'system',
@@ -117,6 +122,7 @@ const mockAdminApi = {
         if (idx === -1) throw new Error('Laporan tidak ditemukan');
 
         reports[idx].status = 'Resolved';
+        if (!reports[idx].timeline) reports[idx].timeline = [];
         reports[idx].timeline.push({
             time: new Date().toISOString().replace('T', ' ').slice(0, 16),
             title: 'Laporan Ditandai Selesai oleh Admin'
@@ -128,35 +134,39 @@ const mockAdminApi = {
     getPanicAlerts: async () => {
         const jobs = getData('ki_jobs') || [];
         return jobs.filter(j => j.panicEnabled).map(j => ({
-            panicId: `panic-${j.jobId}`,
-            jobId: j.jobId,
+            PanicID: `panic-${j.jobId}`,
+            JobID: j.jobId,
             workerName: j.workerName,
             workerPhoto: j.workerPhoto,
             createdAt: j.date + ' 10:00',
-            status: 'Active'
+            status: 'Active',
+            longitude: j.currentLongtitude || 106.8456,
+            latitude: j.currentLatitude || -6.2088
         }));
     },
 
     getPanicDetail: async (jobId) => {
         const jobs = getData('ki_jobs') || [];
-        const job = jobs.find(j => j.jobId === jobId);
+        const job = jobs.find(j => j.jobId === jobId || `panic-${j.jobId}` === jobId);
         if (!job) throw new Error('Panic detail tidak ditemukan');
 
         const worker = (getData('ki_workers') || []).find(w => w.id === job.workerId);
 
         return {
-            panicId: `panic-${job.jobId}`,
+            PanicID: `panic-${job.jobId}`,
+            JobID: job.jobId,
             worker: {
                 id: job.workerId,
                 name: job.workerName,
                 photo: job.workerPhoto
             },
             phone: worker ? worker.phone : 'N/A',
-            latitude: job.currentLatitude,
-            longitude: job.currentLongtitude,
+            latitude: job.currentLatitude || -6.2088,
+            longitude: job.currentLongtitude || 106.8456,
             job: {
+                JobID: job.jobId,
                 jobId: job.jobId,
-                service: job.service,
+                service: job.service || job.title,
                 clientName: job.clientName,
                 address: job.address
             },
@@ -167,7 +177,8 @@ const mockAdminApi = {
 
     resolvePanic: async (jobId) => {
         const jobs = getData('ki_jobs') || [];
-        const idx = jobs.findIndex(j => j.jobId === jobId);
+        const cleanJobId = jobId.startsWith('panic-') ? jobId.replace('panic-', '') : jobId;
+        const idx = jobs.findIndex(j => j.jobId === cleanJobId);
         if (idx === -1) throw new Error('Job tidak ditemukan');
 
         jobs[idx].panicEnabled = false;
@@ -177,40 +188,106 @@ const mockAdminApi = {
 
     getEscrowList: async () => {
         const jobs = getData('ki_jobs') || [];
-        return jobs.map(j => ({
-            escrowId: `esc-${j.jobId}`,
+        const escrowJobs = jobs.filter(j => j.escrowStatus && j.escrowStatus !== 'None');
+        return escrowJobs.map(j => ({
+            PaymentID: `pay-${j.jobId}`,
+            Payment: {
+                PaymentID: `pay-${j.jobId}`,
+                amount: j.price,
+                status: j.escrowStatus === 'Released' ? 'released' : j.escrowStatus === 'Refunded' ? 'refunded' : 'holding',
+                createdAt: j.date || '2026-07-27',
+                releasedAt: j.escrowStatus === 'Released' ? j.finishedAt || j.date : null
+            },
+            escrowId: `esc-`,
             jobId: j.jobId,
-            service: j.service,
-            worker: j.workerName,
-            client: j.clientName,
-            amount: j.price,
-            status: j.escrowStatus,
-            createdAt: j.date + ' 09:00',
+            JobID: j.jobId,
+            title: j.service || j.title,
+            service: j.service || j.title,
+            workerName: j.workerName,
+            clientName: j.clientName,
+            price: j.price,
+            status: j.status,
+            escrowStatus: j.escrowStatus,
+            paymentProof: j.paymentProof,
+            createdAt: j.date || new Date().toISOString().slice(0, 10),
             releasedAt: j.escrowStatus === 'Released' ? j.finishedAt || j.date : null
         }));
+    },
+
+    approvePayment: async (jobId) => {
+        const jobs = getData('ki_jobs') || [];
+        const idx = jobs.findIndex(j => j.jobId === jobId);
+        if (idx === -1) throw new Error('Job tidak ditemukan');
+        jobs[idx].status = 'ACCEPTED';
+        jobs[idx].escrowStatus = 'Holding';
+        setData('ki_jobs', jobs);
+        return jobs[idx];
+    },
+
+    rejectPayment: async (jobId) => {
+        const jobs = getData('ki_jobs') || [];
+        const idx = jobs.findIndex(j => j.jobId === jobId);
+        if (idx === -1) throw new Error('Job tidak ditemukan');
+        jobs[idx].status = 'WAITING_PAYMENT';
+        jobs[idx].escrowStatus = 'Pending';
+        delete jobs[idx].paymentProof;
+        setData('ki_jobs', jobs);
+        return jobs[idx];
     },
 
     releaseEscrow: async (jobId) => {
         const jobs = getData('ki_jobs') || [];
         const idx = jobs.findIndex(j => j.jobId === jobId);
         if (idx === -1) throw new Error('Job tidak ditemukan');
-
         jobs[idx].escrowStatus = 'Released';
         jobs[idx].status = 'COMPLETED';
         setData('ki_jobs', jobs);
         return jobs[idx];
     },
 
+    refundEscrow: async (jobId) => {
+        const jobs = getData('ki_jobs') || [];
+        const idx = jobs.findIndex(j => j.jobId === jobId);
+        if (idx === -1) throw new Error('Job tidak ditemukan');
+        jobs[idx].status = 'CANCELLED';
+        jobs[idx].escrowStatus = 'Refunded';
+        setData('ki_jobs', jobs);
+        return jobs[idx];
+    },
+
+    getJobs: async () => {
+        const jobs = getData('ki_jobs') || [];
+        return jobs.map(j => ({
+            ...j,
+            JobID: j.jobId || j.JobID,
+            createdAt: j.createdAt || j.date || new Date().toISOString()
+        }));
+    },
+
     getCategories: async () => {
-        return getData('ki_categories') || [];
+        const categories = getData('ki_categories') || [];
+        return categories.map(cat => ({
+            ...cat,
+            CategoryID: cat.id || cat.CategoryID,
+            name: cat.nama || cat.name,
+            skills: (cat.skills || []).map(sk => ({
+                ...sk,
+                SkillID: sk.id || sk.SkillID,
+                name: sk.name
+            }))
+        }));
     },
 
     createCategory: async (nama, icon = 'Layers') => {
         const categories = getData('ki_categories') || [];
+        const id = `cat-${Date.now()}`;
         const newCat = {
-            id: `cat-${Date.now()}`,
+            id,
+            CategoryID: id,
             nama,
-            icon
+            name: nama,
+            icon,
+            skills: []
         };
         categories.push(newCat);
         setData('ki_categories', categories);
@@ -219,8 +296,68 @@ const mockAdminApi = {
 
     deleteCategory: async (id) => {
         const categories = getData('ki_categories') || [];
-        const filtered = categories.filter(c => c.id !== id);
+        const filtered = categories.filter(c => c.id !== id && c.CategoryID !== id);
         setData('ki_categories', filtered);
+        return { success: true };
+    },
+
+    createSkill: async (categoryId, skillName) => {
+        const categories = getData('ki_categories') || [];
+        const idx = categories.findIndex(c => c.id === categoryId || c.CategoryID === categoryId);
+        if (idx === -1) throw new Error('Kategori tidak ditemukan');
+        if (!categories[idx].skills) {
+            categories[idx].skills = [];
+        }
+        const id = `sk-${Date.now()}`;
+        const newSkill = {
+            id,
+            SkillID: id,
+            name: skillName,
+            CategoryID: categoryId
+        };
+        categories[idx].skills.push(newSkill);
+        setData('ki_categories', categories);
+        return newSkill;
+    },
+
+    deleteSkill: async (categoryId, skillId) => {
+        const categories = getData('ki_categories') || [];
+        const idx = categories.findIndex(c => c.id === categoryId || c.CategoryID === categoryId);
+        if (idx === -1) throw new Error('Kategori tidak ditemukan');
+        if (categories[idx].skills) {
+            categories[idx].skills = categories[idx].skills.filter(s => s.id !== skillId && s.SkillID !== skillId);
+        }
+        setData('ki_categories', categories);
+        return { success: true };
+    },
+
+    getNotifications: async () => {
+        return getData('ki_notifications') || [];
+    },
+
+    createNotification: async (data) => {
+        const notifs = getData('ki_notifications') || [];
+        const id = `notif-${Date.now()}`;
+        const newNotif = {
+            NotificationID: id,
+            notificationId: id,
+            title: data.title,
+            description: data.description,
+            type: data.type || 'system',
+            role: data.role || 'all',
+            actionLink: data.actionLink || '',
+            createdAt: new Date().toISOString(),
+            isRead: false
+        };
+        notifs.unshift(newNotif);
+        setData('ki_notifications', notifs);
+        return newNotif;
+    },
+
+    deleteNotification: async (id) => {
+        const notifs = getData('ki_notifications') || [];
+        const filtered = notifs.filter(n => n.NotificationID !== id && n.notificationId !== id);
+        setData('ki_notifications', filtered);
         return { success: true };
     }
 };
@@ -230,20 +367,24 @@ const realAdminApi = {
         const res = await axiosInstance.get('/admin/dashboard');
         return res.data;
     },
+    getJobs: async () => {
+        const res = await axiosInstance.get('/admin/jobs');
+        return res.data;
+    },
     getClients: async () => {
-        const res = await axiosInstance.get('/admin/clients');
+        const res = await axiosInstance.get('/user?role=client');
         return res.data;
     },
     getWorkers: async () => {
-        const res = await axiosInstance.get('/admin/workers');
+        const res = await axiosInstance.get('/worker');
         return res.data;
     },
     getWorkerVerificationList: async () => {
-        const res = await axiosInstance.get('/admin/verifications');
+        const res = await axiosInstance.get('/verify');
         return res.data;
     },
     verifyWorker: async (workerId, status) => {
-        const res = await axiosInstance.post(`/admin/workers/${workerId}/verify`, { status });
+        const res = await axiosInstance.patch(`/verify/handle/${workerId}`, { status });
         return res.data;
     },
     getReports: async () => {
@@ -259,35 +400,67 @@ const realAdminApi = {
         return res.data;
     },
     getPanicAlerts: async () => {
-        const res = await axiosInstance.get('/admin/panics');
+        const res = await axiosInstance.get('/panic');
         return res.data;
     },
     getPanicDetail: async (jobId) => {
-        const res = await axiosInstance.get(`/admin/panics/${jobId}`);
+        const res = await axiosInstance.get(`/panic/${jobId}`);
         return res.data;
     },
     resolvePanic: async (jobId) => {
-        const res = await axiosInstance.post(`/admin/panics/${jobId}/resolve`);
+        const res = await axiosInstance.patch(`/panic/${jobId}`, { status: 'resolved' });
         return res.data;
     },
     getEscrowList: async () => {
         const res = await axiosInstance.get('/admin/escrows');
         return res.data;
     },
+    approvePayment: async (jobId) => {
+        const res = await axiosInstance.post(`/admin/escrows/${jobId}/approve`);
+        return res.data;
+    },
+    rejectPayment: async (jobId) => {
+        const res = await axiosInstance.post(`/admin/escrows/${jobId}/reject`);
+        return res.data;
+    },
     releaseEscrow: async (jobId) => {
         const res = await axiosInstance.post(`/admin/escrows/${jobId}/release`);
         return res.data;
     },
+    refundEscrow: async (jobId) => {
+        const res = await axiosInstance.post(`/admin/escrows/${jobId}/refund`);
+        return res.data;
+    },
     getCategories: async () => {
-        const res = await axiosInstance.get('/admin/categories');
+        const res = await axiosInstance.get('/category');
         return res.data;
     },
     createCategory: async (nama, icon = 'Layers') => {
-        const res = await axiosInstance.post('/admin/categories', { name: nama, icon });
+        const res = await axiosInstance.post('/category', { name: nama, icon });
         return res.data;
     },
     deleteCategory: async (id) => {
-        const res = await axiosInstance.delete(`/admin/categories/${id}`);
+        const res = await axiosInstance.delete(`/category/${id}`);
+        return res.data;
+    },
+    createSkill: async (categoryId, skillName) => {
+        const res = await axiosInstance.post(`/skill`, { name: skillName, CategoryID: categoryId });
+        return res.data;
+    },
+    deleteSkill: async (categoryId, skillId) => {
+        const res = await axiosInstance.delete(`/skill/${skillId}`);
+        return res.data;
+    },
+    getNotifications: async () => {
+        const res = await axiosInstance.get('/notification');
+        return res.data;
+    },
+    createNotification: async (data) => {
+        const res = await axiosInstance.post('/notification', data);
+        return res.data;
+    },
+    deleteNotification: async (id) => {
+        const res = await axiosInstance.delete(`/notification/${id}`);
         return res.data;
     }
 };

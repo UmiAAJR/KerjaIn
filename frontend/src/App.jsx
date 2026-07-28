@@ -7,7 +7,18 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 // Auth Pages
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
-// import AdminLogin from './pages/admin/Login'
+
+// Admin Pages
+import AdminLogin from './pages/admin/Login'
+import AdminDashboard from './pages/admin/Dashboard'
+import AdminUsers from './pages/admin/Users'
+import AdminJobs from './pages/admin/Jobs'
+import AdminEscrow from './pages/admin/Escrow'
+import AdminCategories from './pages/admin/Categories'
+import AdminVerification from './pages/admin/Verification'
+import AdminPanic from './pages/admin/Panic'
+import AdminReports from './pages/admin/Reports'
+import AdminNotifications from './pages/admin/Notifications'
 
 // Client Pages
 import ClientDashboard from './pages/client/Dashboard'
@@ -172,48 +183,46 @@ function AppRoutes() {
       /> */}
 
       {/* Admin */}
-      {/* <Route 
+      <Route path='/admin/login' element={<AdminLogin />} />
+      <Route 
         path="/admin/dashboard" 
-        element={} 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} 
       />
-
       <Route 
-        path="/admin/clients" 
-        element={} 
+        path="/admin/users" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminUsers /></ProtectedRoute>} 
       />
-
       <Route 
-        path="/admin/workers" 
-        element={} 
+        path="/admin/jobs" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminJobs /></ProtectedRoute>} 
       />
-
-      <Route 
-        path="/admin/workers/verification" 
-        element={} 
-      />
-
-      <Route 
-        path="/admin/reports" 
-        element={} 
-      />
-
-      <Route 
-        path="/admin/panic" 
-        element={} 
-      />
-
       <Route 
         path="/admin/escrow" 
-        element={} 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminEscrow /></ProtectedRoute>} 
       />
-
       <Route 
         path="/admin/categories" 
-        element={} 
-      /> */}
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminCategories /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/verification" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminVerification /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/panic" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminPanic /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/reports" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminReports /></ProtectedRoute>} 
+      />
+      <Route 
+        path="/admin/notifications" 
+        element={<ProtectedRoute allowedRoles={['admin']}><AdminNotifications /></ProtectedRoute>} 
+      />
 
       {/* Fallback */}
-      {/* <Route path="*" element={<Navigate to="/" replace />} /> */}
+      <Route path="*" element={<Navigate to="/" replace />} />
 
 
 
