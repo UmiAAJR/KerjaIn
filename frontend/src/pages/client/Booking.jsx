@@ -26,8 +26,12 @@ export default function Booking() {
       try {
         const data = await workerApi.getProfile(workerId); // client can fetch worker profile too
         setWorker(data);
-        if (data && data.skills?.length > 0) {
-          setSkill(data.skills[0].skillName);
+        const skillsList = data?.skills || data?.Worker_skill || [];
+        if (skillsList.length > 0) {
+          const firstSkill = skillsList[0]?.skillName || skillsList[0]?.skill?.categoryName || skillsList[0]?.name || 'Layanan Umum';
+          setSkill(firstSkill);
+        } else {
+          setSkill('Layanan Umum');
         }
         // Pre-fill client profile address
         const clientProfile = await clientApi.getProfile();
@@ -45,7 +49,8 @@ export default function Booking() {
 
   const calculateEstimate = () => {
     if (!worker) return 0;
-    return worker.hourlyRate * Number(hours);
+    const rate = Number(worker.hourlyRate || worker.hourly_rate || 35000);
+    return rate * Number(hours);
   };
 
   const handleBooking = async (e) => {
@@ -66,8 +71,9 @@ export default function Booking() {
         description,
         estimate
       );
+      const createdId = job?.jobId || job?.JobID || job?.id || 'job-latest';
       // Navigate to payment page
-      navigate(`/client/booking/${job.jobId}/payment`);
+      navigate(`/client/booking/${createdId}/payment`);
     } catch (err) {
       setError(err.message || 'Gagal membuat pesanan. Coba lagi.');
     } finally {
@@ -100,6 +106,8 @@ export default function Booking() {
       </MobileLayout>
     );
   }
+
+  const skillsList = worker.skills || worker.Worker_skill || [];
 
   return (
     <MobileLayout
@@ -134,7 +142,7 @@ export default function Booking() {
             <div>
               <h3 className="font-extrabold text-slate-800 text-sm leading-snug">{worker.name}</h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                Tarif Jasa: Rp {worker.hourlyRate.toLocaleString('id-ID')}/jam
+                Tarif Jasa: Rp {(worker.hourlyRate || worker.hourly_rate || 35000).toLocaleString('id-ID')}/jam
               </p>
             </div>
           </div>
@@ -153,12 +161,13 @@ export default function Booking() {
                 onChange={(e) => setSkill(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200/80 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#046c7a] transition-all"
               >
-                {worker.skills.length === 0 ? (
+                {skillsList.length === 0 ? (
                   <option value="Layanan Umum">Layanan Umum</option>
                 ) : (
-                  worker.skills.map((s, i) => (
-                    <option key={i} value={s.skillName}>{s.skillName}</option>
-                  ))
+                  skillsList.map((s, i) => {
+                    const skillName = s.skillName || s.skill?.categoryName || s.name || (typeof s === 'string' ? s : 'Layanan Umum');
+                    return <option key={i} value={skillName}>{skillName}</option>;
+                  })
                 )}
               </select>
             </div>

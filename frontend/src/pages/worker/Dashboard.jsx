@@ -226,7 +226,7 @@ export default function WorkerDashboard() {
               <span className="text-sm font-semibold">{nextJob.location}</span>
             </div>
 
-            <button 
+            <button
               onClick={() => navigate('/worker/jobs')}
               className="mt-2 w-full rounded-xl bg-[#005B66] py-3 text-center text-sm font-bold text-white transition hover:bg-[#004852] active:scale-[0.98]"
             >
@@ -239,7 +239,7 @@ export default function WorkerDashboard() {
           </div>
         )}
 
-        
+
 
       </div>
     </MobileLayout>

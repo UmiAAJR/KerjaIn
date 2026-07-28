@@ -256,6 +256,30 @@ const mockWorkerApi = {
         return jobs[idx];
     },
 
+    updateJobStatus: async (jobId, newStatus) => {
+        const s = (newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'WORKER_ACCEPTED') {
+            return await workerService.acceptBooking(jobId);
+        } else if (s === 'REJECTED' || s === 'CANCELLED') {
+            return await workerService.rejectBooking(jobId);
+        } else if (s === 'ON_THE_WAY') {
+            return await workerService.updateOnTheWay(jobId);
+        } else if (s === 'IN_PROGRESS') {
+            return await workerService.startJob(jobId);
+        } else if (s === 'COMPLETED' || s === 'WAITING_CONFIRMATION' || s === 'FINISHED') {
+            return await workerService.finishJob(jobId);
+        } else {
+            const jobs = getData('ki_jobs') || [];
+            const idx = jobs.findIndex(j => j.jobId === jobId);
+            if (idx !== -1) {
+                jobs[idx].status = newStatus;
+                setData('ki_jobs', jobs);
+                return jobs[idx];
+            }
+            throw new Error('Job tidak ditemukan');
+        }
+    },
+
     getHistory: async (workerId) => {
         const jobs = getData('ki_jobs') || [];
         return jobs.filter(j => j.workerId === workerId && j.status === 'COMPLETED');
