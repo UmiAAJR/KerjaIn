@@ -185,6 +185,21 @@ const realAuthApi = {
             localStorage.setItem('ki_token', token);
             const profileRes = await axiosInstance.get(`/user/${id}`);
             const user = profileRes.data.data;
+            
+            if (role === 'worker' && user) {
+                try {
+                    const workerRes = await axiosInstance.get('/worker', { params: { UserID: id } });
+                    const workerData = workerRes.data.data?.[0];
+                    if (workerData) {
+                        const workerId = workerData.WorkerID;
+                        localStorage.setItem('workerId', workerId);
+                        user.WorkerID = workerId;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch worker ID on login:", err);
+                }
+            }
+            
             return { token, role, user };
         }
         return res.data;
@@ -205,6 +220,14 @@ const realAuthApi = {
                             Authorization: `Bearer ${loginRes.token}`
                         }
                     });
+                    
+                    const workerRes = await axiosInstance.get('/worker', { params: { UserID: loginRes.user.UserID } });
+                    const workerData = workerRes.data.data?.[0];
+                    if (workerData) {
+                        const workerId = workerData.WorkerID;
+                        localStorage.setItem('workerId', workerId);
+                        loginRes.user.WorkerID = workerId;
+                    }
                 } catch (err) {
                     console.error("Auto worker profile initialization failed:", err);
                 }
@@ -222,6 +245,21 @@ const realAuthApi = {
             localStorage.setItem('ki_token', token);
             const profileRes = await axiosInstance.get(`/user/${id}`);
             const user = profileRes.data.data;
+            
+            if (decodedRole === 'worker' && user) {
+                try {
+                    const workerRes = await axiosInstance.get('/worker', { params: { UserID: id } });
+                    const workerData = workerRes.data.data?.[0];
+                    if (workerData) {
+                        const workerId = workerData.WorkerID;
+                        localStorage.setItem('workerId', workerId);
+                        user.WorkerID = workerId;
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch worker ID on login:", err);
+                }
+            }
+            
             return { token, role: decodedRole, user };
         }
         return res.data;

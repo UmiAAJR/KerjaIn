@@ -22,8 +22,9 @@ export default function ClientProfile() {
         const data = await clientApi.getProfile();
         setProfile(data);
         setName(data.name);
-        setPhone(data.phone);
+        setPhone(data.phoneNumber);
         setAddress(data.address);
+
       } catch (err) {
         console.error('Gagal memuat profil client:', err);
       } finally {
@@ -90,7 +91,7 @@ export default function ClientProfile() {
                   <form onSubmit={handleUpdate} className="space-y-4">
                     <h3 className="text-sm font-black text-slate-800 tracking-tight">Edit Data Diri</h3>
                     {error && <div className="text-xs text-rose-500 font-bold">{error}</div>}
-                    
+
                     <Input
                       label="Nama Lengkap"
                       type="text"
@@ -162,7 +163,8 @@ export default function ClientProfile() {
                         </div>
                         <div>
                           <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Telepon</span>
-                          <span className="text-xs font-extrabold text-slate-700">{profile.phone}</span>
+                          <span className="text-xs font-extrabold text-slate-700">{profile.phoneNumber}</span>
+                          {console.log(profile)}
                         </div>
                       </div>
 

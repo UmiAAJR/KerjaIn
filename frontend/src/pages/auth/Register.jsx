@@ -37,8 +37,8 @@ const Register = () => {
             } else {
                 navigate('/client/dashboard');
             }
-        } catch {
-            setError('Registrasi gagal. Email atau nomor telepon mungkin sudah terdaftar.');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
         } finally {
             setLoading(false);
         }
