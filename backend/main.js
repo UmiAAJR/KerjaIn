@@ -8,6 +8,8 @@ import WorkerRoute from './route/WorkerRoute.js';
 import NotificationRoute from './route/NotificationRoute.js';
 import VerifyRoute from './route/VerifyRoute.js';
 import WorkerSkillRoute from './route/WorkerSkillRoute.js';
+import JobRoute from './route/JobRoute.js';
+import PaymentRoute from './route/PaymentRoute.js';
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -29,6 +31,8 @@ app.use("/worker", WorkerRoute)
 app.use("/notification", NotificationRoute)
 app.use("/verify", VerifyRoute)
 app.use("/worker-skill", WorkerSkillRoute)
+app.use("/job", JobRoute)
+app.use("/payment", PaymentRoute)
 
 
 // Buat sinkronisasi kalo apdet
