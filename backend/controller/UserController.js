@@ -98,31 +98,10 @@ export const login = async(req, res) => {
 
 export const updateProfil = async(req, res) => {
     try {
-        const checkEmail = await User.findOne({
-            where: {
-                email: req.body.email
-            }
-        })
 
-        axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.photo}).then((resp) => {
-            req.body.photo = resp.display_url
-        })
-
-        if(checkEmail && checkEmail.UserID !== req.user.id) {
-            return res.status(409).json({
-                message: "Email sudah digunakan"
-            })
-        }
-
-        const checkPhoneNumber = await User.findOne({
-            where: {
-                phoneNumber: req.body.phoneNumber
-            }
-        })
-
-        if(checkPhoneNumber && checkPhoneNumber.UserID !== req.user.id) {
-            return res.status(409).json({
-                message: "Nomor sudah digunakan"
+        if(req.body.photo) {
+            axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.photo}).then((resp) => {
+                req.body.photo = resp.display_url
             })
         }
 

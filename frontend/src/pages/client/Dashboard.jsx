@@ -29,7 +29,7 @@ const ClientDashboard = () => {
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
-    
+
     useEffect(() => {
         clientApi.getDashboard()
             .then(res => {
@@ -192,7 +192,6 @@ const ClientDashboard = () => {
                                             <p className="text-xs font-bold text-primary-500 mt-0.5">
                                                 {worker.roleName}
                                             </p>
-
                                             <div className="flex items-center gap-4 text-[11px] text-slate-400 font-semibold mt-2.5">
                                                 <div className="flex items-center gap-1">
                                                     <Compass size={12} className="text-slate-400 stroke-[2.5]" />

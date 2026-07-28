@@ -3,6 +3,17 @@ import axiosInstance from './axiosInstance';
 const getData = (key) => JSON.parse(localStorage.getItem(key));
 const setData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
+const getWorkerHourlyRate = (worker) => {
+    const skills = worker.WorkerSkills || worker.Worker_skill || worker.skills || [];
+    if (skills.length > 0) {
+        const firstSkill = skills[0];
+        if (firstSkill && (firstSkill.hourlyRate !== undefined && firstSkill.hourlyRate !== null)) {
+            return Number(firstSkill.hourlyRate);
+        }
+    }
+    return 30000;
+};
+
 const mockWorkerApi = {
     getDashboard: async (workerId) => {
         const workers = getData('ki_workers') || [];
@@ -287,11 +298,13 @@ const realWorkerApi = {
         const res = await axiosInstance.get(`/worker/${workerId}`);
         const worker = res.data.data;
         const balance = Number(worker?.balance || 0);
+        const hourlyRate = getWorkerHourlyRate(worker);
         return {
             photo: worker?.User?.photo || '',
             name: worker?.User?.name || '',
             rating: worker?.rating || 5.0,
             status: worker?.status || 'Available',
+            hourlyRate,
             income: {
                 todayIncome: 0,
                 weeklyIncome: balance * 0.7,
@@ -310,6 +323,7 @@ const realWorkerApi = {
         const res = await axiosInstance.get(`/worker/${workerId}`);
         const worker = res.data.data;
         if (worker) {
+            const hourlyRate = getWorkerHourlyRate(worker);
             return {
                 ...worker,
                 id: worker.WorkerID,
@@ -317,7 +331,8 @@ const realWorkerApi = {
                 email: worker.User?.email || '',
                 photo: worker.User?.photo || '',
                 phone: worker.User?.phoneNumber || '',
-                address: worker.User?.address || ''
+                address: worker.User?.address || '',
+                hourlyRate
             };
         }
         return null;

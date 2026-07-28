@@ -3,6 +3,17 @@ import axiosInstance from './axiosInstance';
 const getData = (key) => JSON.parse(localStorage.getItem(key));
 const setData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
+const getWorkerHourlyRate = (worker) => {
+    const skills = worker.WorkerSkills || worker.Worker?.WorkerSkills || worker.Worker_skill || worker.Worker?.Worker_skill || worker.skills || [];
+    if (skills.length > 0) {
+        const firstSkill = skills[0];
+        if (firstSkill && (firstSkill.hourlyRate !== undefined && firstSkill.hourlyRate !== null)) {
+            return Number(firstSkill.hourlyRate);
+        }
+    }
+    return 30000;
+};
+
 const mockClientApi = {
     getDashboard: async () => {
         const client = getData('ki_client_profile');
@@ -314,18 +325,40 @@ const realClientApi = {
         
         let recommendedWorkers = [];
         try {
-            const nearestRes = await axiosInstance.get('/worker/nearest');
-            recommendedWorkers = (nearestRes.data.data || nearestRes.data || []).map(w => ({
-                id: w.WorkerID || w.id,
-                name: w.User?.name || w.name,
-                photo: w.User?.photo || w.photo,
-                rating: w.rating || 5.0,
-                status: w.status || 'Available',
-                distance: parseFloat(w.distance || 0).toFixed(1),
-                skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || []
-            })).slice(0, 3);
+            const nearestRes = await axiosInstance.get('/worker/nearest', { timeout: 3500 });
+            const list = nearestRes.data.data || nearestRes.data || [];
+            if (list.length > 0) {
+                recommendedWorkers = list.map(w => ({
+                    id: w.WorkerID || w.Worker?.WorkerID || w.id || w.UserID,
+                    name: w.User?.name || w.name,
+                    photo: w.User?.photo || w.photo,
+                    rating: w.rating || w.Worker?.rating || 5.0,
+                    status: w.status || w.Worker?.status || 'Available',
+                    distance: parseFloat(w.distance || 1.5).toFixed(1),
+                    skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || w.Worker?.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
+                    hourlyRate: getWorkerHourlyRate(w)
+                })).slice(0, 3);
+            } else {
+                throw new Error("Empty list returned");
+            }
         } catch (err) {
-            console.error("Failed to fetch nearest workers:", err);
+            console.warn("Failed to fetch nearest workers, falling back to general workers list:", err);
+            try {
+                const fallbackRes = await axiosInstance.get('/worker');
+                const list = fallbackRes.data.data || [];
+                recommendedWorkers = list.map(w => ({
+                    id: w.WorkerID || w.Worker?.WorkerID || w.id || w.UserID,
+                    name: w.User?.name || w.name,
+                    photo: w.User?.photo || w.photo,
+                    rating: w.rating || w.Worker?.rating || 5.0,
+                    status: w.status || w.Worker?.status || 'Available',
+                    distance: 1.5,
+                    skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || w.Worker?.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
+                    hourlyRate: getWorkerHourlyRate(w)
+                })).slice(0, 3);
+            } catch (fallbackErr) {
+                console.error("Fallback workers fetch failed:", fallbackErr);
+            }
         }
 
         let categories = [];
@@ -363,7 +396,8 @@ const realClientApi = {
             status: w.status || 'Available',
             address: w.User?.address || w.address || '',
             distance: w.distance || 1.5,
-            skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || []
+            skills: (w.WorkerSkills || w.Worker_skill || []).map(ws => ({ skillName: ws.Skill?.name })),
+            hourlyRate: getWorkerHourlyRate(w)
         }));
 
         if (keyword) {
@@ -391,6 +425,32 @@ const realClientApi = {
         const res = await axiosInstance.get(`/worker/${id}`);
         const w = res.data.data;
         if (w) {
+            let reviews = [];
+            let jobsDone = 0;
+            let rating = 5.0;
+            try {
+                const jobsRes = await axiosInstance.get('/job', { params: { WorkerID: id, status: 'COMPLETED' } });
+                const jobsList = jobsRes.data.data || [];
+                jobsDone = jobsList.length;
+                
+                const ratedJobs = jobsList.filter(j => j.rating && j.rating > 0);
+                if (ratedJobs.length > 0) {
+                    const ratingSum = ratedJobs.reduce((acc, curr) => acc + Number(curr.rating), 0);
+                    rating = ratingSum / ratedJobs.length;
+                }
+                
+                reviews = ratedJobs.map(j => ({
+                    id: j.JobID,
+                    clientName: 'Client KerjaIn',
+                    rating: Number(j.rating),
+                    comment: j.comment || 'Pekerjaan selesai dengan baik.',
+                    date: j.finishedAt ? j.finishedAt.slice(0, 10) : 'Baru-baru ini'
+                }));
+            } catch (err) {
+                console.error("Failed to load worker reviews from jobs:", err);
+            }
+
+            const hourlyRate = getWorkerHourlyRate(w);
             return {
                 id: w.WorkerID || w.id,
                 name: w.User?.name || w.name,
@@ -398,13 +458,16 @@ const realClientApi = {
                 phone: w.User?.phoneNumber || w.phone || '',
                 photo: w.User?.photo || w.photo,
                 verified: w.verified || false,
-                rating: w.rating || 5.0,
+                rating,
+                jobsDone,
                 status: w.status || 'Available',
                 address: w.User?.address || w.address || '',
                 distance: w.distance || 1.5,
-                skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
+                skills: (w.WorkerSkills || w.Worker_skill || []).map(ws => ({ skillName: ws.Skill?.name, experienceLevel: ws.experienceLevel || 'Beginner' })),
                 description: w.description || 'Pekerja Profesional.',
-                bankAccount: w.bankAccount || w.bankNumber || 'BCA - 1234567890'
+                bankAccount: w.bankAccount || w.bankNumber || 'BCA - 1234567890',
+                hourlyRate,
+                reviews
             };
         }
         return null;
