@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import logo from '../../assets/Logo.png'
 // import SocialButton from '../../components/ui/SocialButton';
-import { Mail, Lock, User, UserPlus } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Phone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
@@ -13,13 +13,14 @@ const Register = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !phoneNumber) {
             setError('Semua input wajib diisi');
             return;
         }
@@ -30,14 +31,14 @@ const Register = () => {
         setError('');
         setLoading(true);
         try {
-            const res = await register(name, email, password, role);
+            const res = await register(name, email, password, role, phoneNumber);
             if (res.role === 'worker') {
                 navigate('/worker/dashboard');
             } else {
                 navigate('/client/dashboard');
             }
         } catch {
-            setError('Registrasi gagal. Email mungkin sudah terdaftar.');
+            setError('Registrasi gagal. Email atau nomor telepon mungkin sudah terdaftar.');
         } finally {
             setLoading(false);
         }
@@ -123,6 +124,17 @@ const Register = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             id="register-email"
+                            required
+                        />
+
+                        <Input
+                            label="Nomor Telepon"
+                            type="text"
+                            placeholder="081234567890"
+                            icon={Phone}
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            id="register-phone"
                             required
                         />
 

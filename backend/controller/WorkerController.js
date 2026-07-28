@@ -63,14 +63,22 @@ export const getNearestWorker = async (req, res) => {
 
         const workers = await User.findAll({
             where: {
-                role: 'worker',
-                status: 'open'
+                role: 'worker'
             },
+            include: [
+                {
+                    model: Worker,
+                    as: 'Worker',
+                    where: {
+                        status: 'open'
+                    }
+                }
+            ],
 
             attributes: {
                 include: [
                     [
-                        sequelize.literal(
+                        db.literal(
                             `6371 * acos(cos(radians(${client.latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${client.longitude})) + sin(radians(${client.latitude})) * sin(radians(latitude)))`
                         ),
                         'distance'
@@ -79,12 +87,13 @@ export const getNearestWorker = async (req, res) => {
             },
 
             order: [
-                [sequelize.literal('distance'), 'ASC']
+                [db.literal('distance'), 'ASC']
             ]
         });
 
 
     } catch (error) {
+        console.log(error)
         return res.status(500).json({
             message: "Terjadi kesalahan pada server"
         })

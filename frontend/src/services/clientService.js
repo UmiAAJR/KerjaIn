@@ -294,22 +294,124 @@ const mockClientApi = {
 
 const realClientApi = {
     getDashboard: async () => {
-        const res = await axiosInstance.get('/client/dashboard');
-        return res.data;
+        const token = localStorage.getItem('ki_token');
+        let client = null;
+        let unreadNotification = 0;
+        
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const profileRes = await axiosInstance.get(`/user/${payload.id}`);
+                client = profileRes.data.data;
+                
+                const notifRes = await axiosInstance.get('/notification', { params: { role: 'client' } });
+                const notifications = notifRes.data.data || [];
+                unreadNotification = notifications.filter(n => !n.isRead).length;
+            } catch (err) {
+                console.error("Failed to load client context for dashboard:", err);
+            }
+        }
+        
+        let recommendedWorkers = [];
+        try {
+            const nearestRes = await axiosInstance.get('/worker/nearest');
+            recommendedWorkers = (nearestRes.data.data || nearestRes.data || []).map(w => ({
+                id: w.WorkerID || w.id,
+                name: w.User?.name || w.name,
+                photo: w.User?.photo || w.photo,
+                rating: w.rating || 5.0,
+                status: w.status || 'Available',
+                distance: parseFloat(w.distance || 0).toFixed(1),
+                skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || []
+            })).slice(0, 3);
+        } catch (err) {
+            console.error("Failed to fetch nearest workers:", err);
+        }
+
+        let categories = [];
+        try {
+            const catRes = await axiosInstance.get('/category');
+            categories = catRes.data.data || [];
+        } catch (err) {
+            console.error("Failed to fetch categories:", err);
+        }
+
+        return {
+            client,
+            location: {
+                latitude: client?.latitude || -6.2088,
+                longitude: client?.longitude || 106.8456,
+                address: client?.address || 'Jakarta Selatan'
+            },
+            categories,
+            recommendedWorkers,
+            unreadNotification
+        };
     },
     searchWorkers: async (keyword = '', rating = 0, radius = 10, category = '') => {
-        const res = await axiosInstance.get('/client/workers', {
-            params: { keyword, rating, radius, category }
-        });
-        return res.data;
+        const res = await axiosInstance.get('/worker');
+        let workers = res.data.data || [];
+        
+        workers = workers.map(w => ({
+            id: w.WorkerID || w.id,
+            name: w.User?.name || w.name,
+            email: w.User?.email || w.email,
+            phone: w.User?.phoneNumber || w.phone || '',
+            photo: w.User?.photo || w.photo,
+            verified: w.verified || false,
+            rating: w.rating || 5.0,
+            status: w.status || 'Available',
+            address: w.User?.address || w.address || '',
+            distance: w.distance || 1.5,
+            skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || []
+        }));
+
+        if (keyword) {
+            const kw = keyword.toLowerCase();
+            workers = workers.filter(w =>
+                w.name.toLowerCase().includes(kw) ||
+                w.skills.some(s => s.skillName.toLowerCase().includes(kw))
+            );
+        }
+
+        if (category) {
+            const cat = category.toLowerCase();
+            workers = workers.filter(w =>
+                w.skills.some(s => s.skillName.toLowerCase().includes(cat))
+            );
+        }
+
+        if (rating > 0) {
+            workers = workers.filter(w => w.rating >= rating);
+        }
+
+        return workers;
     },
     getWorkerDetail: async (id) => {
-        const res = await axiosInstance.get(`/client/workers/${id}`);
-        return res.data;
+        const res = await axiosInstance.get(`/worker/${id}`);
+        const w = res.data.data;
+        if (w) {
+            return {
+                id: w.WorkerID || w.id,
+                name: w.User?.name || w.name,
+                email: w.User?.email || w.email,
+                phone: w.User?.phoneNumber || w.phone || '',
+                photo: w.User?.photo || w.photo,
+                verified: w.verified || false,
+                rating: w.rating || 5.0,
+                status: w.status || 'Available',
+                address: w.User?.address || w.address || '',
+                distance: w.distance || 1.5,
+                skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
+                description: w.description || 'Pekerja Profesional.',
+                bankAccount: w.bankAccount || w.bankNumber || 'BCA - 1234567890'
+            };
+        }
+        return null;
     },
     createBooking: async (workerId, tanggal, jam, alamat, deskripsi, estimasiHarga) => {
-        const res = await axiosInstance.post('/client/bookings', {
-            workerId,
+        const res = await axiosInstance.post('/job', {
+            WorkerID: workerId,
             bookingDate: tanggal,
             schedule: jam,
             address: alamat,
@@ -319,18 +421,19 @@ const realClientApi = {
         return res.data;
     },
     createEscrowPayment: async (jobId, totalPembayaran, metodePembayaran) => {
-        const res = await axiosInstance.post(`/client/jobs/${jobId}/payment`, {
+        const res = await axiosInstance.post(`/payment`, {
+            JobID: jobId,
             amount: Number(totalPembayaran),
             paymentMethod: metodePembayaran
         });
         return res.data;
     },
     getJobTracking: async (jobId) => {
-        const res = await axiosInstance.get(`/client/jobs/${jobId}/tracking`);
-        return res.data;
+        const res = await axiosInstance.get(`/job/${jobId}`);
+        return res.data.data;
     },
     submitReview: async (jobId, rating, comment, photo = null) => {
-        const res = await axiosInstance.post(`/client/jobs/${jobId}/review`, {
+        const res = await axiosInstance.patch(`/job/${jobId}`, {
             rating: Number(rating),
             comment,
             photo
@@ -338,7 +441,8 @@ const realClientApi = {
         return res.data;
     },
     submitReport: async (jobId, category, description, attachment) => {
-        const res = await axiosInstance.post(`/client/jobs/${jobId}/report`, {
+        const res = await axiosInstance.post(`/reports`, {
+            JobID: jobId,
             category,
             description,
             attachment
@@ -346,19 +450,24 @@ const realClientApi = {
         return res.data;
     },
     getHistory: async () => {
-        const res = await axiosInstance.get('/client/history');
-        return res.data;
+        const res = await axiosInstance.get('/job');
+        return res.data.data || [];
     },
     getNotifications: async () => {
-        const res = await axiosInstance.get('/client/notifications');
-        return res.data;
+        const res = await axiosInstance.get('/notification', { params: { role: 'client' } });
+        return res.data.data || [];
     },
     getProfile: async () => {
-        const res = await axiosInstance.get('/client/profile');
-        return res.data;
+        const token = localStorage.getItem('ki_token');
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const res = await axiosInstance.get(`/user/${payload.id}`);
+            return res.data.data;
+        }
+        return null;
     },
     updateProfile: async (profileData) => {
-        const res = await axiosInstance.put('/client/profile', profileData);
+        const res = await axiosInstance.patch('/user/update', profileData);
         return res.data;
     }
 };

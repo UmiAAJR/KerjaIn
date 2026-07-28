@@ -5,7 +5,7 @@ import { VerifyUser } from '../middleware/UserAuth.js'
 const WorkerRoute = express()
 
 WorkerRoute.get("/", getWorker)
-WorkerRoute.get("/nearest", getNearestWorker)
+WorkerRoute.get("/nearest",VerifyUser, getNearestWorker)
 WorkerRoute.get("/:id", getDetailWorker)
 WorkerRoute.post("/", VerifyUser, createWorker)
 WorkerRoute.patch("/:id", VerifyUser, updateWorker)
