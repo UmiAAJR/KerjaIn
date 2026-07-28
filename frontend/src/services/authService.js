@@ -178,14 +178,52 @@ const mockAuthApi = {
 const realAuthApi = {
     login: async (email, password) => {
         const res = await axiosInstance.post('/user/login', { email, password });
+        const { token } = res.data;
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const { id, role } = payload;
+            localStorage.setItem('ki_token', token);
+            const profileRes = await axiosInstance.get(`/user/${id}`);
+            const user = profileRes.data.data;
+            return { token, role, user };
+        }
         return res.data;
     },
     register: async (name, email, password, role) => {
         const res = await axiosInstance.post('/user/register', { name, email, password, role });
+        if (res.status === 201 || res.data?.message === "Berhasil membuat akun" || res.status === 200) {
+            const loginRes = await realAuthApi.login(email, password);
+            if (role === 'worker' && loginRes?.token) {
+                try {
+                    await axiosInstance.post('/worker', {
+                        UserID: loginRes.user.UserID,
+                        balance: 0,
+                        status: 'Available',
+                        description: 'Worker baru terdaftar.'
+                    }, {
+                        headers: {
+                            Authorization: `Bearer ${loginRes.token}`
+                        }
+                    });
+                } catch (err) {
+                    console.error("Auto worker profile initialization failed:", err);
+                }
+            }
+            return loginRes;
+        }
         return res.data;
     },
     loginWithGoogle: async (idToken, role) => {
         const res = await axiosInstance.post('/user/google-login', { idToken, role });
+        const { token } = res.data;
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const { id, role: decodedRole } = payload;
+            localStorage.setItem('ki_token', token);
+            const profileRes = await axiosInstance.get(`/user/${id}`);
+            const user = profileRes.data.data;
+            return { token, role: decodedRole, user };
+        }
         return res.data;
     }
 };
