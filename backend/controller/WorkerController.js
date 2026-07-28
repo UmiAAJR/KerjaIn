@@ -33,7 +33,7 @@ export const getWorker = async (req, res) => {
                 },
                 {
                     model: WorkerSkill,
-                    as: "WorkerSkill",
+                    as: "Worker_skill",
                     include: [
                         {
                             model: Skill
@@ -123,7 +123,7 @@ export const getDetailWorker = async (req, res) => {
                 },
                 {
                     model: WorkerSkill,
-                    as: "WorkerSkill",
+                    as: "Worker_skill",
                     include: [
                         {
                             model: Skill,

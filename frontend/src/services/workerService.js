@@ -3,6 +3,17 @@ import axiosInstance from './axiosInstance';
 const getData = (key) => JSON.parse(localStorage.getItem(key));
 const setData = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
+const getWorkerHourlyRate = (worker) => {
+    const skills = worker.WorkerSkills || worker.Worker_skill || worker.skills || [];
+    if (skills.length > 0) {
+        const firstSkill = skills[0];
+        if (firstSkill && (firstSkill.hourlyRate !== undefined && firstSkill.hourlyRate !== null)) {
+            return Number(firstSkill.hourlyRate);
+        }
+    }
+    return 30000;
+};
+
 const mockWorkerApi = {
     getDashboard: async (workerId) => {
         const workers = getData('ki_workers') || [];
@@ -245,6 +256,30 @@ const mockWorkerApi = {
         return jobs[idx];
     },
 
+    updateJobStatus: async (jobId, newStatus) => {
+        const s = (newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'WORKER_ACCEPTED') {
+            return await workerService.acceptBooking(jobId);
+        } else if (s === 'REJECTED' || s === 'CANCELLED') {
+            return await workerService.rejectBooking(jobId);
+        } else if (s === 'ON_THE_WAY') {
+            return await workerService.updateOnTheWay(jobId);
+        } else if (s === 'IN_PROGRESS') {
+            return await workerService.startJob(jobId);
+        } else if (s === 'COMPLETED' || s === 'WAITING_CONFIRMATION' || s === 'FINISHED') {
+            return await workerService.finishJob(jobId);
+        } else {
+            const jobs = getData('ki_jobs') || [];
+            const idx = jobs.findIndex(j => j.jobId === jobId);
+            if (idx !== -1) {
+                jobs[idx].status = newStatus;
+                setData('ki_jobs', jobs);
+                return jobs[idx];
+            }
+            throw new Error('Job tidak ditemukan');
+        }
+    },
+
     getHistory: async (workerId) => {
         const jobs = getData('ki_jobs') || [];
         return jobs.filter(j => j.workerId === workerId && j.status === 'COMPLETED');
@@ -287,11 +322,13 @@ const realWorkerApi = {
         const res = await axiosInstance.get(`/worker/${workerId}`);
         const worker = res.data.data;
         const balance = Number(worker?.balance || 0);
+        const hourlyRate = getWorkerHourlyRate(worker);
         return {
             photo: worker?.User?.photo || '',
             name: worker?.User?.name || '',
             rating: worker?.rating || 5.0,
             status: worker?.status || 'Available',
+            hourlyRate,
             income: {
                 todayIncome: 0,
                 weeklyIncome: balance * 0.7,
@@ -310,6 +347,7 @@ const realWorkerApi = {
         const res = await axiosInstance.get(`/worker/${workerId}`);
         const worker = res.data.data;
         if (worker) {
+            const hourlyRate = getWorkerHourlyRate(worker);
             return {
                 ...worker,
                 id: worker.WorkerID,
@@ -317,7 +355,8 @@ const realWorkerApi = {
                 email: worker.User?.email || '',
                 photo: worker.User?.photo || '',
                 phone: worker.User?.phoneNumber || '',
-                address: worker.User?.address || ''
+                address: worker.User?.address || '',
+                hourlyRate
             };
         }
         return null;
