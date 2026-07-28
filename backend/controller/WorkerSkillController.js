@@ -8,7 +8,7 @@ const Worker = model.Worker
 const User = model.User
 const Skill = model.Skill
 
-export const getWorkerSkill =  async(req, res) => {
+export const getWorkerSkill = async (req, res) => {
     try {
         const workerSkill = await WorkerSkill.findAll({
             where: {
@@ -17,10 +17,12 @@ export const getWorkerSkill =  async(req, res) => {
             include: [
                 {
                     model: Worker,
+                    as: "Worker",
                     attributes: ["WorkerID", "UserID"],
                     include: [
                         {
                             model: User,
+                            as: "User",
                             attributes: {
                                 exclude: ["password"]
                             }
@@ -28,7 +30,8 @@ export const getWorkerSkill =  async(req, res) => {
                     ]
                 },
                 {
-                    model: Skill
+                    model: Skill,
+                    as: "Skill"
                 }
             ]
         })
@@ -50,14 +53,16 @@ export const getDetailWorkerSkill = async (req, res) => {
             where: {
                 WorkerSkillID: req.params.id
             },
-            
+
             include: [
                 {
                     model: Worker,
+                    as: "Worker",
                     attributes: ["WorkerID", "UserID"],
                     include: [
                         {
                             model: User,
+                            as: "User",
                             attributes: {
                                 exclude: ["password"]
                             }
@@ -81,7 +86,7 @@ export const getDetailWorkerSkill = async (req, res) => {
     }
 }
 
-export const createWorkerSkill = async(req, res) => {
+export const createWorkerSkill = async (req, res) => {
     try {
         await WorkerSkill.create(req.body)
 
@@ -95,7 +100,7 @@ export const createWorkerSkill = async(req, res) => {
     }
 }
 
-export const updateWorkerSkill = async(req, res) => {
+export const updateWorkerSkill = async (req, res) => {
     try {
         await WorkerSkill.update(req.body, {
             where: {
@@ -113,7 +118,7 @@ export const updateWorkerSkill = async(req, res) => {
     }
 }
 
-export const deleteWorkerSkill = async(req, res) => {
+export const deleteWorkerSkill = async (req, res) => {
     try {
         await WorkerSkill.destroy({
             where: {

@@ -7,7 +7,7 @@ const Verify = model.Verify
 const Worker = model.Worker
 const User = model.User
 
-export const getVerify =  async(req, res) => {
+export const getVerify = async (req, res) => {
     try {
         const perPage = req.query.perPage ?? 10
         const totalData = await Verify.count()
@@ -18,18 +18,20 @@ export const getVerify =  async(req, res) => {
             where: {
                 ...req.query
             },
-            
+
             limit: perPage,
             offset: offset,
 
             include: [
                 {
                     model: Worker,
+                    as: "Worker",
                     attributes: ["WorkerID", "UserID"],
                     include: [
                         {
                             model: User,
-                            include: ["name"]
+                            as: "User",
+                            attributes: ["name"]
                         }
                     ]
                 }
@@ -57,10 +59,12 @@ export const getDetailVerify = async (req, res) => {
             include: [
                 {
                     model: Worker,
+                    as: "Worker",
                     attributes: ["WorkerID", "UserID"],
                     include: [
                         {
                             model: User,
+                            as: "User",
                             attributes: {
                                 exclude: ["password"]
                             }
@@ -81,7 +85,7 @@ export const getDetailVerify = async (req, res) => {
     }
 }
 
-export const createVerify = async(req, res) => {
+export const createVerify = async (req, res) => {
     try {
         await Verify.create(req.body)
 
@@ -95,7 +99,7 @@ export const createVerify = async(req, res) => {
     }
 }
 
-export const updateVerify = async(req, res) => {
+export const updateVerify = async (req, res) => {
     try {
         await Verify.update(req.body, {
             where: {
@@ -113,7 +117,7 @@ export const updateVerify = async(req, res) => {
     }
 }
 
-export const deleteVerify = async(req, res) => {
+export const deleteVerify = async (req, res) => {
     try {
         await Verify.destroy({
             where: {
@@ -131,7 +135,7 @@ export const deleteVerify = async(req, res) => {
     }
 }
 
-export const handleVerify = async(req, res) => {
+export const handleVerify = async (req, res) => {
     try {
         const verify = await Verify.findOne({
             where: { VerifyID: req.params.id }
@@ -143,8 +147,8 @@ export const handleVerify = async(req, res) => {
 
         await verify.update(req.body);
 
-        if(req.body.status && req.body.status === "accepted") {
-            await Worker.update({status: "verified"}, {
+        if (req.body.status && req.body.status === "accepted") {
+            await Worker.update({ status: "verified" }, {
                 where: {
                     WorkerID: verify.WorkerID
                 }
