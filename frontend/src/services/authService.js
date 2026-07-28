@@ -177,15 +177,15 @@ const mockAuthApi = {
 
 const realAuthApi = {
     login: async (email, password) => {
-        const res = await axiosInstance.post('/auth/login', { email, password });
+        const res = await axiosInstance.post('/user/login', { email, password });
         return res.data;
     },
     register: async (name, email, password, role) => {
-        const res = await axiosInstance.post('/auth/register', { name, email, password, role });
+        const res = await axiosInstance.post('/user/register', { name, email, password, role });
         return res.data;
     },
     loginWithGoogle: async (idToken, role) => {
-        const res = await axiosInstance.post('/auth/google-login', { idToken, role });
+        const res = await axiosInstance.post('/user/google-login', { idToken, role });
         return res.data;
     }
 };
