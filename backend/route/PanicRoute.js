@@ -1,13 +1,13 @@
 import express from 'express'
 import { createPanic, deletePanic, getPanic, getDetailPanic, updatePanic } from '../controller/PanicController.js'
-import { VerifyAdmin, VerifyUser } from '../middleware/UserAuth.js'
+import { CheckRole, VerifyUser } from '../middleware/UserAuth.js'
 
 const PanicRoute = express()
 
-PanicRoute.get("/", getPanic)
-PanicRoute.get("/:id", getDetailPanic)
+PanicRoute.get("/", VerifyUser, CheckRole(["admin"]), getPanic)
+PanicRoute.get("/:id", VerifyUser, getDetailPanic)
 PanicRoute.post("/", VerifyUser, createPanic)
 PanicRoute.patch("/:id", VerifyUser, updatePanic)
-PanicRoute.delete("/:id", VerifyUser, VerifyAdmin, deletePanic)
+PanicRoute.delete("/:id", VerifyUser, deletePanic)
 
 export default PanicRoute

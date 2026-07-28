@@ -11,7 +11,7 @@ const mockWorkerApi = {
 
         const jobs = (getData('ki_jobs') || []).filter(j => j.workerId === workerId);
 
-        const finishedJobs = jobs.filter(j => j.status === 'COMPLETED');
+        const finishedJobs = jobs.filter(j => j.status === 'COMPLETED' && j.escrowStatus === 'Released');
         const today = new Date().toISOString().slice(0, 10);
         const todayIncome = finishedJobs.filter(j => j.date === today).reduce((acc, curr) => acc + curr.price, 0);
         const totalIncome = finishedJobs.reduce((acc, curr) => acc + curr.price, 0);
@@ -65,7 +65,7 @@ const mockWorkerApi = {
     },
 
     getWallet: async (workerId) => {
-        const jobs = (getData('ki_jobs') || []).filter(j => j.workerId === workerId && j.status === 'COMPLETED');
+        const jobs = (getData('ki_jobs') || []).filter(j => j.workerId === workerId && j.status === 'COMPLETED' && j.escrowStatus === 'Released');
         const totalIncome = jobs.reduce((acc, curr) => acc + curr.price, 0);
 
         const txs = jobs.map(j => ({

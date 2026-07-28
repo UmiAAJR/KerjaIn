@@ -31,50 +31,19 @@ export const VerifyUser = (req, res, next) => {
     }   
 }
 
-export const VerifyClient = (req, res, next) => {
-    try {
-        if(req.user.role === "client") {
-            return next()
+export const CheckRole = (allowedRoles) => {
+    return (req, res, next) => {
+        
+        const userRole = req.role;
+
+        if (!userRole) {
+            return res.status(401).json({ message: "Akses ditolak. Tidak ada data role." });
         }
 
-        return res.status(404).json({
-            message: "Halaman tidak ditemukan"
-        })
-    } catch (error) {
-        return res.status(500).json({
-            message: "Terjadi kesalahan pada server"
-        })
-    }
-}
-
-export const VerifyWorker = (req, res, next) => {
-    try {
-        if(req.user.role === "worker") {
-            return next()
+        if (allowedRoles.includes(userRole)) {
+            next();
+        } else {
+            return res.status(403).json({ message: "Akses ditolak. Hak akses tidak mencukupi." });
         }
-
-        return res.status(404).json({
-            message: "Halaman tidak ditemukan"
-        })
-    } catch (error) {
-        return res.status(500).json({
-            message: "Terjadi kesalahan pada server"
-        })
-    }
-}
-
-export const VerifyAdmin = (req, res, next) => {
-    try {
-        if(req.user.role === "admin") {
-            return next()
-        }
-
-        return res.status(404).json({
-            message: "Halaman tidak ditemukan"
-        })
-    } catch (error) {
-        return res.status(500).json({
-            message: "Terjadi kesalahan pada server"
-        })
     }
 }
