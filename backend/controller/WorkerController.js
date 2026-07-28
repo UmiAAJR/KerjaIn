@@ -93,6 +93,11 @@ export const getNearestWorker = async (req, res) => {
             ]
         });
 
+        return res.json({
+            message: "Berhasil mendapatkan data",
+            data: workers
+        })
+
 
     } catch (error) {
         console.log(error)
