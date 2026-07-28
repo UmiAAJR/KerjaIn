@@ -18,6 +18,10 @@ export default class Payment extends Model {
       type: DataTypes.STRING(15),
       allowNull: true
     },
+    snapToken: {
+      type: DataTypes.STRING(255),
+      allowNull: true
+    },
     releasedAt: {
       type: DataTypes.DATE,
       allowNull: true

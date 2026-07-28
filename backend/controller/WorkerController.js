@@ -8,7 +8,7 @@ const User = model.User
 const Skill = model.Skill
 const WorkerSkill = model.WorkerSkill
 
-export const getWorker =  async(req, res) => {
+export const getWorker = async (req, res) => {
     try {
         const perPage = req.query.perPage ?? 10
         const totalData = await Worker.count()
@@ -53,6 +53,44 @@ export const getWorker =  async(req, res) => {
     }
 }
 
+export const getNearestWorker = async (req, res) => {
+    try {
+        const client = await User.findOne({
+            where: {
+                UserID: req.user.id
+            }
+        })
+
+        const workers = await User.findAll({
+            where: {
+                role: 'worker',
+                status: 'open'
+            },
+
+            attributes: {
+                include: [
+                    [
+                        sequelize.literal(
+                            `6371 * acos(cos(radians(${client.latitude})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${client.longitude})) + sin(radians(${client.latitude})) * sin(radians(latitude)))`
+                        ),
+                        'distance'
+                    ]
+                ]
+            },
+
+            order: [
+                [sequelize.literal('distance'), 'ASC']
+            ]
+        });
+
+
+    } catch (error) {
+        return res.status(500).json({
+            message: "Terjadi kesalahan pada server"
+        })
+    }
+}
+
 export const getDetailWorker = async (req, res) => {
     try {
         const worker = await Worker.findOne({
@@ -88,7 +126,7 @@ export const getDetailWorker = async (req, res) => {
     }
 }
 
-export const createWorker = async(req, res) => {
+export const createWorker = async (req, res) => {
     try {
         await Worker.create(req.body)
 
@@ -102,7 +140,7 @@ export const createWorker = async(req, res) => {
     }
 }
 
-export const updateWorker = async(req, res) => {
+export const updateWorker = async (req, res) => {
     try {
         await Worker.update(req.body, {
             where: {
@@ -120,7 +158,7 @@ export const updateWorker = async(req, res) => {
     }
 }
 
-export const deleteWorker = async(req, res) => {
+export const deleteWorker = async (req, res) => {
     try {
         await Worker.destroy({
             where: {
