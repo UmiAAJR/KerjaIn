@@ -19,7 +19,7 @@ export const getPanic = async (req, res) => {
             offset: offset,
 
             order: [
-                ["CreatedAt", "DESC"]
+                ["createdAt", "DESC"]
             ]
         })
 
