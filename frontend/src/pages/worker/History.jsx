@@ -6,6 +6,8 @@ import { Link, useNavigate } from 'react-router-dom';
 
 export default function WorkerHistory() {
   const [historyTab, setHistoryTab] = useState('Semua')
+  const navigate = useNavigate();
+
 
   const HistoryData = [{
     HistoryID: 1,
@@ -39,8 +41,9 @@ export default function WorkerHistory() {
   return (
     <MobileLayout
       topNavProps={{
-        variant: "brand",
-        hasNotification: true,
+        variant: 'title',
+        title: 'Detail Pekerjaan',
+        onBack: () => navigate(`/worker/activity`),
       }}
       bottomNavProps={{
         activeTab: "home",

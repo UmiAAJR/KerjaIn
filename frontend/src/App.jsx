@@ -41,6 +41,7 @@ import WorkerNotification from './pages/worker/Notifications'
 import WorkerVerification from './pages/worker/Verification'
 import WorkerEditProfile from './pages/worker/EditProfile'
 import WorkerUbahRekening from './pages/worker/UbahRekening'
+import WorkerDetailPekerjaan from './pages/worker/DetailPekerjaan'
 
 // Route guards
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -168,6 +169,11 @@ function AppRoutes() {
         <Route 
         path="/worker/ubahrekening" 
         element={<WorkerUbahRekening/>} 
+      />
+
+        <Route 
+        path="/worker/detailpekerjaan" 
+        element={<WorkerDetailPekerjaan/>} 
       />
 
       {/* <Route 

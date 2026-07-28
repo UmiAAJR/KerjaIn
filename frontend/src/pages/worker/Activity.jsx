@@ -19,7 +19,11 @@ export default function WorkerActivity() {
   const [activeTab, setActiveTab] = useState('Semua Pekerjaan');
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(null); // Menyimpan ID job yang sedang di-proses (terima/tolak)
+  const [actionLoading, setActionLoading] = useState(null);
+
+  // State untuk Status Keaktifan Pekerja
+  const [isOnline, setIsOnline] = useState(true);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Asumsi workerId didapat dari auth / localStorage / session
   const currentWorkerId = localStorage.getItem('workerId') || 'w1';
@@ -40,6 +44,23 @@ export default function WorkerActivity() {
   useEffect(() => {
     fetchActiveJobs();
   }, []);
+
+  // HANDLER TOGGLE STATUS KERJA
+  const handleToggleStatus = async () => {
+    try {
+      setIsToggling(true);
+      const newStatus = !isOnline;
+      
+      // Jika ada API backend untuk update status online/offline:
+      // await workerApi.updateOnlineStatus(currentWorkerId, newStatus);
+      
+      setIsOnline(newStatus);
+    } catch (error) {
+      alert('Gagal mengubah status: ' + error.message);
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   // 2. HANDLER TERIMA PEKERJAAN
   const handleAccept = async (jobId) => {
@@ -99,18 +120,42 @@ export default function WorkerActivity() {
       topNavProps={{
         variant: 'title',
         title: 'Detail Pekerjaan',
-        onBack: () => navigate(-1),
+        onBack: () => navigate(`/worker/dashboard`),
         rightElement: historyButton
       }}
     >
       <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 p-4 pb-20">
 
-        {/* HEADER */}
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-[#001d28]">Aktivitas Saya</h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Kelola pekerjaan yang sedang berjalan dan permintaan baru.
-          </p>
+        {/* HEADER & TOGGLE STATUS */}
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-bold text-[#001d28]">Aktivitas Saya</h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Kelola pekerjaan dan permintaan baru.
+            </p>
+          </div>
+
+          {/* TOGGLE WORKER STATUS */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              disabled={isToggling}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                isOnline ? 'bg-[#008953]' : 'bg-gray-300'
+              }`}
+              aria-label="Toggle Status Kerja"
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  isOnline ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span className={`text-[10px] font-semibold ${isOnline ? 'text-[#008953]' : 'text-gray-400'}`}>
+              {isOnline ? 'Siap Bekerja' : 'Off / Istirahat'}
+            </span>
+          </div>
         </div>
 
         {/* TAB NAVIGASI */}

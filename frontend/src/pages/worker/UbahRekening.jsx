@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import MobileLayout from "../../components/layout/MobileLayout";
+import { useNavigate } from 'react-router-dom';
 import { 
     ArrowLeft, 
     CreditCard, 
@@ -24,7 +25,8 @@ const INDONESIA_BANKS = [
     { id: 'seabank', name: 'SeaBank Indonesia', code: '535', color: 'bg-cyan-500' },
 ];
 
-export default function EditBankAccount({ currentAccount, onSave, onBack }) {
+export default function WorkerUbahRekening({ currentAccount, onSave }) {
+    const navigate = useNavigate();
     const [selectedBank, setSelectedBank] = useState(currentAccount?.bankName || '');
     const [accountNumber, setAccountNumber] = useState(currentAccount?.accountNumber || '');
     const [accountHolder, setAccountHolder] = useState(currentAccount?.accountHolder || '');
@@ -70,7 +72,7 @@ export default function EditBankAccount({ currentAccount, onSave, onBack }) {
                 {/* HEADER TOP BAR */}
                 <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3.5 flex items-center justify-between">
                     <button 
-                        onClick={onBack}
+                        onClick={() => navigate(`/worker/wallet`)}
                         className="p-1.5 rounded-full hover:bg-slate-100 text-gray-600 transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -141,7 +143,7 @@ export default function EditBankAccount({ currentAccount, onSave, onBack }) {
                                 <span className="text-[10px] font-bold tracking-wider text-gray-400 uppercase">Ringkasan Rekening</span>
                                 <span className="text-xs font-bold text-gray-800">{selectedBank}</span>
                                 <span className="text-xs font-mono text-gray-600">{accountNumber}</span>
-                                <span className="text-xs font-semibold text-[#007088] uppercase mt-0.5">{accountHolder || "NAMA PEMILIK"}</span>
+                                <span className="text-xs font-semibold text-[#007088] uppercase mt-0.5">{accountHolder || ""}</span>
                             </div>
                         )}
 
