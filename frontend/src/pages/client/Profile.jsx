@@ -4,15 +4,18 @@ import { clientApi } from '../../services/api';
 import MobileLayout from '../../components/layout/MobileLayout';
 import { Mail, Phone, MapPin, Pen, LogOut, Check } from 'lucide-react';
 import Input from '../../components/ui/Input';
+import MapPickerModal from '../../components/ui/MapPickerModal';
 
 export default function ClientProfile() {
   const { logout } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [coords, setCoords] = useState({ lat: -6.2088, lng: 106.8456 });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -21,10 +24,12 @@ export default function ClientProfile() {
       try {
         const data = await clientApi.getProfile();
         setProfile(data);
-        setName(data.name);
-        setPhone(data.phoneNumber);
-        setAddress(data.address);
-
+        setName(data.name || '');
+        setPhone(data.phoneNumber || '');
+        setAddress(data.address || '');
+        if (data.latitude && data.longitude) {
+          setCoords({ lat: Number(data.latitude), lng: Number(data.longitude) });
+        }
       } catch (err) {
         console.error('Gagal memuat profil client:', err);
       } finally {
@@ -42,10 +47,24 @@ export default function ClientProfile() {
     }
     setError('');
     try {
-      const updated = await clientApi.updateProfile({ name, phone, address });
-      setProfile(updated);
+      await clientApi.updateProfile({ 
+        name, 
+        phone, 
+        address,
+        latitude: coords.lat,
+        longitude: coords.lng
+      });
+      setProfile(prev => ({
+        ...prev,
+        name,
+        phoneNumber: phone,
+        address,
+        latitude: coords.lat,
+        longitude: coords.lng
+      }));
       setIsEditing(false);
-    } catch {
+    } catch (err) {
+      console.error(err);
       setError('Gagal memperbarui profil. Coba lagi.');
     }
   };
@@ -108,13 +127,28 @@ export default function ClientProfile() {
                       required
                     />
 
-                    <Input
-                      label="Alamat Lengkap"
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      required
-                    />
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5">Alamat Utama (Lokasi Peta)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={address}
+                          onClick={() => setIsMapOpen(true)}
+                          placeholder="Pilih lokasi di peta..."
+                          className="flex-grow bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold text-slate-800 cursor-pointer focus:outline-none focus:border-[#046c7a]"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIsMapOpen(true)}
+                          className="bg-[#046c7a] hover:bg-[#035f6b] text-white px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all active:scale-95 cursor-pointer shadow-xs"
+                        >
+                          <MapPin size={15} />
+                          <span>Peta</span>
+                        </button>
+                      </div>
+                    </div>
 
                     <div className="flex gap-2 pt-2">
                       <button
@@ -164,7 +198,6 @@ export default function ClientProfile() {
                         <div>
                           <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider">Telepon</span>
                           <span className="text-xs font-extrabold text-slate-700">{profile.phoneNumber}</span>
-                          {console.log(profile)}
                         </div>
                       </div>
 
@@ -194,6 +227,16 @@ export default function ClientProfile() {
           </div>
         )}
       </div>
+
+      {/* Map Picker Modal for Location Editing */}
+      <MapPickerModal
+        isOpen={isMapOpen}
+        onClose={() => setIsMapOpen(false)}
+        onSelectLocation={(loc) => {
+          setAddress(loc.address);
+          setCoords({ lat: loc.lat, lng: loc.lng });
+        }}
+      />
     </MobileLayout>
   );
 }

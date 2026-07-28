@@ -4,7 +4,7 @@ import Button from './Button';
 import { useLocation } from '../../context/LocationContext';
 import { MapPin, SearchIcon, Compass } from 'lucide-react';
 
-const MapPickerModal = ({ isOpen, onClose }) => {
+const MapPickerModal = ({ isOpen, onClose, onSelectLocation }) => {
   const { location, updateLocation } = useLocation();
   const mapRef = useRef(null);
   const activeMapRef = useRef(null);
@@ -195,6 +195,9 @@ const MapPickerModal = ({ isOpen, onClose }) => {
   // Handle confirming selected location
   const handleConfirm = () => {
     updateLocation(tempCoords.lat, tempCoords.lng, tempAddress);
+    if (onSelectLocation) {
+      onSelectLocation({ lat: tempCoords.lat, lng: tempCoords.lng, address: tempAddress });
+    }
     onClose();
   };
 
