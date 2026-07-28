@@ -162,7 +162,7 @@ export const INITIAL_JOBS = [
         startedAt: '2026-07-16 10:15',
         finishedAt: '2026-07-16 11:45',
         price: 52500, // 1.5 jam * 35000
-        status: 'Finished', // Booking, Escrow Paid, Worker Accepted, On The Way, In Progress, Waiting Confirmation, Finished, Rejected
+        status: 'COMPLETED', // WAITING_PAYMENT, ESCROW_PAID, WORKER_ACCEPTED, ON_THE_WAY, IN_PROGRESS, WAITING_CONFIRMATION, COMPLETED, CANCELLED
         escrowStatus: 'Released', // Holding, Released, Refunded
         address: 'Jl. Sudirman No. 12, Jakarta Selatan',
         description: 'Pipa air di kamar mandi utama bocor dan air merembes ke tembok.',

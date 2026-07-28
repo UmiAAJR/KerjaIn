@@ -1,11 +1,16 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, MapPin, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight } from 'lucide-react';
 import logo from '../../assets/Logo.png'
 import Input from "../../components/ui/Input";
+import { useAuth } from "../../context/AuthContext";
 
 const Login = () => {
+    const navigate = useNavigate();
+    const { login } = useAuth();
     const [role, setRole] = useState('client'); // Role switch ('client' | 'worker')
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -18,17 +23,23 @@ const Login = () => {
         }
         setError('');
         setLoading(true);
+        console.log("Submitting login for:", email, "Role target (UI):", role);
         try {
             const res = await login(email, password);
+            console.log("Login API success. Response:", res);
             // Navigate depending on the actual role returned by backend
             if (res.role === 'admin') {
+                console.log("Redirecting to admin dashboard...");
                 navigate('/admin/dashboard');
             } else if (res.role === 'worker') {
+                console.log("Redirecting to worker dashboard...");
                 navigate('/worker/dashboard');
             } else {
+                console.log("Redirecting to client dashboard...");
                 navigate('/client/dashboard');
             }
         } catch (err) {
+            console.error("Login API error:", err);
             setError('Login gagal. Periksa kembali email & password Anda.');
         } finally {
             setLoading(false);
@@ -100,7 +111,7 @@ const Login = () => {
                             type="email"
                             placeholder="nama@email.com"
                             icon={Mail}
-                            // value={email}
+                            value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             id="login-email"
                             required
@@ -111,7 +122,7 @@ const Login = () => {
                             type="password"
                             placeholder="••••••••"
                             icon={Lock}
-                            // value={password}
+                            value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             id="login-password"
                             required

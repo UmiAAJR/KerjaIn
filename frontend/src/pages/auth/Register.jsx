@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Input from '../../components/ui/Input';
 import logo from '../../assets/Logo.png'
 // import SocialButton from '../../components/ui/SocialButton';
 import { Mail, Lock, User, UserPlus } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
     const navigate = useNavigate();
+    const { register } = useAuth();
     const [role, setRole] = useState('client'); // Role switch ('client' | 'worker')
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -28,10 +30,13 @@ const Register = () => {
         setError('');
         setLoading(true);
         try {
-            // Default to client role
-            await register(name, email, password, 'client');
-            navigate('/client/dashboard');
-        } catch (err) {
+            const res = await register(name, email, password, role);
+            if (res.role === 'worker') {
+                navigate('/worker/dashboard');
+            } else {
+                navigate('/client/dashboard');
+            }
+        } catch {
             setError('Registrasi gagal. Email mungkin sudah terdaftar.');
         } finally {
             setLoading(false);
@@ -104,7 +109,7 @@ const Register = () => {
                             type="text"
                             placeholder="Budi Santoso"
                             icon={User}
-                            // value={name}
+                            value={name}
                             onChange={(e) => setName(e.target.value)}
                             id="register-name"
                             required
@@ -115,7 +120,7 @@ const Register = () => {
                             type="email"
                             placeholder="nama@email.com"
                             icon={Mail}
-                            // value={email}
+                            value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             id="register-email"
                             required
@@ -126,7 +131,7 @@ const Register = () => {
                             type="password"
                             placeholder="••••••••"
                             icon={Lock}
-                            // value={password}
+                            value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             id="register-password"
                             required

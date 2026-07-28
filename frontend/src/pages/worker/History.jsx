@@ -39,7 +39,7 @@ export default function WorkerHistory() {
   return (
     <MobileLayout
       topNavProps={{
-        variant: "location",
+        variant: "brand",
         hasNotification: true,
       }}
       bottomNavProps={{
