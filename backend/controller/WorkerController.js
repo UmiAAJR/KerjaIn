@@ -26,12 +26,14 @@ export const getWorker = async (req, res) => {
             include: [
                 {
                     model: User,
+                    as: "User",
                     attributes: {
                         exclude: ["password"]
                     }
                 },
                 {
                     model: WorkerSkill,
+                    as: "WorkerSkill",
                     include: [
                         {
                             model: Skill
@@ -109,15 +111,18 @@ export const getDetailWorker = async (req, res) => {
             include: [
                 {
                     model: User,
+                    as: "User",
                     attributes: {
                         exclude: ["password"]
                     }
                 },
                 {
                     model: WorkerSkill,
+                    as: "WorkerSkill",
                     include: [
                         {
-                            model: Skill
+                            model: Skill,
+                            as: "Skill"
                         }
                     ]
                 }

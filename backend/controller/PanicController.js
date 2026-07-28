@@ -42,21 +42,25 @@ export const getDetailPanic = async (req, res) => {
             include: [
                 {
                     model: Job,
+                    as: "Job",
                     include: [
                         {
                             model: User,
+                            as: "User",
                             attributes: {
                                 exclude: ["password"]
                             }
                         },
                         {
                             model: Worker,
+                            as: "Worker",
                             attributes: {
                                 exclude: ["balance"]
                             },
                             include: [
                                 {
                                     model: User,
+                                    as: "User",
                                     attributes: {
                                         exclude: ["password"]
                                     }
