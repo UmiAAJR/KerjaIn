@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import initModels from '../model/init-models.js'
 import db from '../db/db.js'
+import axios from 'axios'
 dotenv.config()
 
 const model = initModels(db)
@@ -101,6 +102,10 @@ export const updateProfil = async(req, res) => {
             where: {
                 email: req.body.email
             }
+        })
+
+        axios.post("https://api.imgbb.com/1/upload?key="+process.env.IMGDB_KEY, {image: req.body.photo}).then((resp) => {
+            req.body.photo = resp.display_url
         })
 
         if(checkEmail && checkEmail.UserID !== req.user.id) {
