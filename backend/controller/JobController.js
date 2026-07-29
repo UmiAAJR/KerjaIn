@@ -1,3 +1,4 @@
+import { where } from "sequelize";
 import db from "../db/db.js";
 import initModels from "../model/init-models.js";
 import midtransClient from 'midtrans-client';
@@ -5,6 +6,8 @@ import midtransClient from 'midtrans-client';
 
 const model = initModels(db)
 const Job = model.Job
+const Worker = model.Worker
+const Payment = model.Payment
 
 export const getJob = async (req, res) => {
     try {
@@ -106,6 +109,44 @@ export const updateJob = async (req, res) => {
                 JobID: req.params.id
             }
         })
+
+        return res.json({
+            message: "Berhasil memperbarui kategori"
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: "Terjadi kesalahan pada server"
+        })
+    }
+}
+
+export const completeJob = async (req, res) => {
+    try {
+        const job = await Job.findOne({
+            where: {
+                JobID: req.params.id
+            },
+            include: [
+                {
+                    model: Payment,
+                    as: "Payment",
+                    attributes: ["amount"]
+                }
+            ]
+        }) 
+        
+        await job.update(req.body)
+
+        const worker = await Worker.findOne({
+            where: {
+                WorkerID: job.WorkerID
+            }
+        })
+
+        const amount = job.Payment.amount
+        const newBalance = worker.balance + (job.Payment.amount - (job.Payment.amount / 10))
+
+        worker.update({balance: newBalance})
 
         return res.json({
             message: "Berhasil memperbarui kategori"
