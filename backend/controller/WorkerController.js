@@ -111,7 +111,7 @@ export const getDetailWorker = async (req, res) => {
     try {
         const worker = await Worker.findOne({
             where: {
-                WorkerID: req.params.id
+                UserID: req.params.id
             },
             include: [
                 {
