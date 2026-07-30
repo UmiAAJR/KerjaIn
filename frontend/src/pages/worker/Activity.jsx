@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { workerApi } from '../../services/api'; // Sesuaikan path ini dengan project kamu
+import { workerApi } from '../../services/api'; // Path service kamu
 import MobileLayout from "../../components/layout/MobileLayout";
 import { useNavigate } from 'react-router-dom';
 import {
@@ -25,14 +25,11 @@ export default function WorkerActivity() {
   const [isOnline, setIsOnline] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
 
-  // Asumsi workerId didapat dari auth / localStorage / session
-  const currentWorkerId = localStorage.getItem('workerId') || 'w1';
-
-  // 1. FETCH DATA PEKERJAAN AKTIF
+  // 1. FUNGSI FETCH DATA PEKERJAAN AKTIF
   const fetchActiveJobs = async () => {
     try {
       setLoading(true);
-      const data = await workerApi.getActiveJobs(currentWorkerId);
+      const data = await workerApi.getActiveJobs(); // 💡 Memanggil fungsi getActiveJobs
       setJobs(data || []);
     } catch (error) {
       console.error('Gagal mengambil data pekerjaan:', error);
@@ -41,6 +38,7 @@ export default function WorkerActivity() {
     }
   };
 
+  // 2. RUN FETCH SAAT KOMPONEN PERTAMA KALI DIMUAT
   useEffect(() => {
     fetchActiveJobs();
   }, []);
@@ -52,7 +50,7 @@ export default function WorkerActivity() {
       const newStatus = !isOnline;
       
       // Jika ada API backend untuk update status online/offline:
-      // await workerApi.updateOnlineStatus(currentWorkerId, newStatus);
+      // await workerApi.updateOnlineStatus(newStatus);
       
       setIsOnline(newStatus);
     } catch (error) {
@@ -62,12 +60,12 @@ export default function WorkerActivity() {
     }
   };
 
-  // 2. HANDLER TERIMA PEKERJAAN
+  // HANDLER TERIMA PEKERJAAN
   const handleAccept = async (jobId) => {
     try {
       setActionLoading(jobId);
       await workerApi.acceptBooking(jobId);
-      await fetchActiveJobs(); // Refresh data
+      await fetchActiveJobs(); 
     } catch (error) {
       alert('Gagal menerima pekerjaan: ' + error.message);
     } finally {
@@ -75,13 +73,13 @@ export default function WorkerActivity() {
     }
   };
 
-  // 3. HANDLER TOLAK PEKERJAAN
+  // HANDLER TOLAK PEKERJAAN
   const handleReject = async (jobId) => {
     if (!window.confirm('Apakah Anda yakin ingin menolak pekerjaan ini?')) return;
     try {
       setActionLoading(jobId);
       await workerApi.rejectBooking(jobId);
-      await fetchActiveJobs(); // Refresh data
+      await fetchActiveJobs(); // Refresh data otomatis setelah tolak
     } catch (error) {
       alert('Gagal menolak pekerjaan: ' + error.message);
     } finally {
@@ -89,9 +87,9 @@ export default function WorkerActivity() {
     }
   };
 
-  // Helper untuk menentukan status kategori UI ('Menunggu' / 'Berlangsung')
   const getUiStatus = (status) => {
-    if (['WAITING_PAYMENT', 'ESCROW_PAID'].includes(status)) {
+    // Sesuaikan status pending / menunggu dari backend
+    if (['PENDING', 'WAITING_PAYMENT', 'ESCROW_PAID'].includes(status)) {
       return 'Menunggu';
     }
     return 'Berlangsung';
@@ -194,7 +192,7 @@ export default function WorkerActivity() {
               filteredJobs.map((job) => {
                 const uiStatus = getUiStatus(job.status);
                 const isPending = uiStatus === 'Menunggu';
-                const id = job.jobId || job.id;
+                const id = job.JobID || job.jobId || job.id;
 
                 return (
                   <div
@@ -215,16 +213,17 @@ export default function WorkerActivity() {
                       <img
                         src={
                           job.clientAvatar ||
+                          job.Client?.User?.photo ||
                           `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            job.clientName || 'Client'
+                            job.clientName || job.Client?.User?.name || 'Client'
                           )}&background=random`
                         }
-                        alt={job.clientName}
+                        alt={job.clientName || 'Client'}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                       <div>
                         <h3 className="font-bold text-gray-800 text-sm">
-                          {job.clientName || 'Pelanggan'}
+                          {job.clientName || job.Client?.User?.name || 'Pelanggan'}
                         </h3>
                         <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                           {!isPending ? (
@@ -232,7 +231,7 @@ export default function WorkerActivity() {
                           ) : (
                             <Sparkles className="w-3 h-3 text-gray-400" />
                           )}
-                          {job.service}
+                          {job.service || job.title || 'Layanan Pekerjaan'}
                         </p>
                       </div>
                     </div>
@@ -254,7 +253,7 @@ export default function WorkerActivity() {
                           )}
                         </span>
                         <span className="font-medium text-gray-700">
-                          {job.address || job.distance || 'Lokasi tidak tersedia'}
+                          {job.address || job.location || job.distance || 'Lokasi tidak tersedia'}
                         </span>
                       </div>
 
@@ -280,7 +279,7 @@ export default function WorkerActivity() {
                           <Banknote className="w-3.5 h-3.5" /> Harga
                         </span>
                         <span className="font-bold text-[#007088] text-sm">
-                          Rp {(job.price || 0).toLocaleString('id-ID')}
+                          Rp {(Number(job.price || job.totalAmount || 0)).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
