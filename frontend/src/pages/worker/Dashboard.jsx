@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { workerApi } from '../../services/api';
+import { workerApi } from '../../services/api'; // atau '../../services/workerService'
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp, History, Zap, ClipboardCheck, Clock, Timer, Star, Calendar, MapPin
+  TrendingUp,
+  History,
+  Zap,
+  ClipboardCheck,
+  Clock,
+  Star,
+  Calendar,
+  MapPin
 } from 'lucide-react';
-import { Marker, Popup, MapContainer, TileLayer } from 'react-leaflet';
 
 export default function WorkerDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
 
-  // Fungsi helper format rupiah
+  // Helper format rupiah
   const formatRupiah = (number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -21,21 +27,20 @@ export default function WorkerDashboard() {
     }).format(number || 0);
   };
 
-  useEffect(() => {
-    // Ambil workerId dari localStorage, auth state, atau dummy ID untuk testing
-    const currentWorkerId = localStorage.getItem('workerId') || 'worker-1';
 
-    setLoading(true);
-    workerApi.getDashboard(currentWorkerId)
-      .then(res => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Gagal mengambil data dashboard:", err);
-        setLoading(false);
-      });
-  }, []);
+ useEffect(() => {
+  const fetchDashboard = async () => {
+    // 1. Ambil workerId dari state/context/storage terlebih dahulu
+    
+    // 2. Oper workerId ke service
+    const d = await workerApi.getDashboard();
+    setData(d)
+    setLoading(false)
+  };
+
+  fetchDashboard();
+}, []);
+
 
   if (loading) {
     return (
@@ -51,13 +56,14 @@ export default function WorkerDashboard() {
     return (
       <MobileLayout>
         <div className="p-5 text-center text-red-500">
-          Gagal memuat data pekerja.
+          Gagal memuat data pekerja. Silakan periksa koneksi atau akun Anda.
         </div>
       </MobileLayout>
     );
   }
 
-  const { name, income, order, nextJob } = data;
+  // Destructuring aman dari data workerService
+  const { name, income, order, nextJob, photo, rating } = data;
 
   return (
     <MobileLayout
@@ -73,7 +79,7 @@ export default function WorkerDashboard() {
         {/* Heading */}
         <div>
           <h2 className="text-2xl font-black text-primary-600 font-heading tracking-tight leading-tight">
-            Halo, {name || 'Pekerja'}!
+            Halo, {data.name} !
           </h2>
           <h3 className="text-sm text-gray-500">
             Siap untuk menyelesaikan pekerjaan hari ini?
@@ -85,12 +91,15 @@ export default function WorkerDashboard() {
           <div className="relative z-10">
             <p className="text-md font-medium text-cyan-100/80">Saldo Anda</p>
             <h2 className="mt-2 mb-4 text-3xl font-bold tracking-tight leading-tight text-white">
-              {formatRupiah(income?.walletBalance)}
+              {formatRupiah(data?.walletBalance)}
             </h2>
 
             {/* Tombol Tarik Dana & Riwayat */}
             <div className="flex gap-3">
-              <Link to={"/worker/wallet"} className="flex-1 rounded-xl bg-[#dbeefd] py-3 text-center font-semibold text-[#0e7490] transition hover:bg-white active:scale-[0.98]">
+              <Link 
+                to="/worker/wallet" 
+                className="flex-1 rounded-xl bg-[#dbeefd] py-3 text-center font-semibold text-[#0e7490] transition hover:bg-white active:scale-[0.98]"
+              >
                 Tarik Dana
               </Link>
 
@@ -121,7 +130,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Hari Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(income?.todayIncome)}
+                  {formatRupiah(data?.todayIncome)}
                 </p>
               </div>
             </div>
@@ -131,7 +140,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Minggu Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(income?.weeklyIncome)}
+                  {formatRupiah(data?.weeklyIncome)}
                 </p>
               </div>
             </div>
@@ -141,7 +150,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Bulan Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-[#005B66]">
-                  {formatRupiah(income?.monthlyIncome)}
+                  {formatRupiah(data?.monthlyIncome)}
                 </p>
               </div>
             </div>
@@ -156,7 +165,7 @@ export default function WorkerDashboard() {
               <Zap className="h-5 w-5" />
             </div>
             <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{order?.activeOrder || 0}</span>
+              <span className="text-xl font-bold leading-tight">{data?.activeOrder || 0}</span>
               <p className="text-xs font-medium text-gray-700">Order Aktif</p>
             </div>
           </div>
@@ -167,7 +176,7 @@ export default function WorkerDashboard() {
               <Clock className="h-5 w-5" />
             </div>
             <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{order?.pendingOrder || 0}</span>
+              <span className="text-xl font-bold leading-tight">{data?.pendingOrder || 0}</span>
               <p className="text-xs font-medium text-gray-700">Menunggu</p>
             </div>
           </div>
@@ -178,7 +187,7 @@ export default function WorkerDashboard() {
               <ClipboardCheck className="h-5 w-5" />
             </div>
             <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{order?.completeOrder || 0}</span>
+              <span className="text-xl font-bold leading-tight">{data?.completeOrder || 0}</span>
               <p className="text-xs font-medium text-gray-700">Selesai</p>
             </div>
           </div>
@@ -189,27 +198,27 @@ export default function WorkerDashboard() {
           <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
             <div className="absolute top-0 right-0 rounded-bl-xl bg-[#F9A825] px-3 py-1">
               <span className="text-xs font-bold text-[#5D3A00]">
-                Mulai {nextJob.schedule || 'Segera'}
+                Mulai {data.schedule || 'Segera'}
               </span>
             </div>
 
             <div className="flex items-center gap-3 pt-1">
               <img
-                src={data.photo || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"}
-                alt={nextJob.clientName}
+                src={photo || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"}
+                alt={data.clientName || "Client"}
                 className="h-16 w-16 rounded-xl object-cover"
               />
 
               <div className="flex flex-col justify-center">
                 <span className="text-xs font-bold text-[#005B66]">
-                  {nextJob.service}
+                  {data.service || 'Layanan Pekerjaan'}
                 </span>
                 <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                  {nextJob.clientName}
+                  {data.clientName || 'Nama Client'}
                 </h3>
                 <div className="flex items-center gap-1 text-xs text-slate-600 font-medium mt-0.5">
                   <Star className="h-3.5 w-3.5 fill-slate-800 text-slate-800" />
-                  <span>{data.rating || 5.0} (Top Client)</span>
+                  <span>{rating || 5.0} (Top Client)</span>
                 </div>
               </div>
             </div>
@@ -218,12 +227,12 @@ export default function WorkerDashboard() {
 
             <div className="flex items-center gap-3 text-slate-700">
               <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
-              <span className="text-sm font-semibold">{nextJob.schedule}</span>
+              <span className="text-sm font-semibold">{nextJob.schedule || '-'}</span>
             </div>
 
             <div className="flex items-center gap-3 text-slate-700">
               <MapPin className="h-5 w-5 text-slate-500 shrink-0" />
-              <span className="text-sm font-semibold">{nextJob.location}</span>
+              <span className="text-sm font-semibold">{nextJob.location || '-'}</span>
             </div>
 
             <button
@@ -238,8 +247,6 @@ export default function WorkerDashboard() {
             Tidak ada pekerjaan mendatang saat ini.
           </div>
         )}
-
-
 
       </div>
     </MobileLayout>

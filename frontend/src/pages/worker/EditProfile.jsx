@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { workerApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { 
@@ -11,63 +12,84 @@ import {
     FileText, 
     Save,
     X,
-    Plus
+    Loader2,
+    DollarSign
 } from 'lucide-react';
 
-// Opsional: Import opsi dari mockData jika ada, atau buat daftar internal
-const AVAILABLE_SKILLS = [
-    "Tukang Kayu & Furniture",
-    "Teknisi AC & Pendingin",
-    "Tukang Cat & Interior",
-    "Instalasi Listrik",
-    "Pipa & Plambing",
-    "Tukang Bangunan & Renovasi",
-    "Perbaikan Elektronik",
-    "Jasa Kebersihan / Cleaning"
-];
-
-export default function EditWorkerProfile({ user, onSave, onBack, isLoading = false }) {
-    
+export default function EditWorkerProfile({ workerId: propWorkerId }) {
     const navigate = useNavigate();
-    // Inisialisasi state form dinamis dari props user
+    
+    // Ambil workerId dari prop atau dari localStorage
+    const activeWorkerId = propWorkerId || localStorage.getItem('workerId');
+
+    // State Master Data dari Database
+    const [availableSkills, setAvailableSkills] = useState([]);
+
+    // State Form
     const [formData, setFormData] = useState({
         name: "",
-        skills: [], // Mengubah role tunggal menjadi array skills
+        skills: [],
         email: "",
         phone: "",
         bio: "",
-        avatar: ""
+        hourlyRate: 30000,
+        photo: ""
     });
 
     const [previewAvatar, setPreviewAvatar] = useState("");
     const [selectedSkillInput, setSelectedSkillInput] = useState("");
+    
+    // State UX
+    const [fetching, setFetching] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
-    // Effect untuk sinkronisasi jika data user baru masuk / di-load async
+    // Load Data Profil & Master Skills dari Database Secara Pararel
     useEffect(() => {
-        if (user) {
-            // Parsing skills: bisa dari array `user.skills` atau string `user.role`
-            let initialSkills = [];
-            if (Array.isArray(user.skills)) {
-                initialSkills = user.skills;
-            } else if (user.role) {
-                initialSkills = [user.role];
-            } else {
-                initialSkills = ["Tukang Kayu & Furniture"];
+    const fetchAllData = async () => {
+        try {
+            setFetching(true);
+
+            // 1. Panggil API getSkills
+            const skillsRes = await workerApi.getSkills();
+            
+            console.log("A. Respon mentah dari API:", skillsRes);
+
+            // 2. Ekstrak array skill dari wrapper { message, data }
+            let rawSkillsList = [];
+
+            if (Array.isArray(skillsRes)) {
+                // Jika api.js sudah mengembalikan response.data.data
+                rawSkillsList = skillsRes;
+            } else if (skillsRes && Array.isArray(skillsRes.data)) {
+                // Jika api.js mengembalikan response.data
+                rawSkillsList = skillsRes.data;
             }
 
-            setFormData({
-                name: user.name || "",
-                skills: initialSkills,
-                email: user.email || "",
-                phone: user.phone || "",
-                bio: user.bio || "",
-                avatar: user.avatar || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"
-            });
-            setPreviewAvatar(user.avatar || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60");
-        }
-    }, [user]);
+            console.log("B. Array skill setelah diekstrak:", rawSkillsList);
 
-    // Handle input teks biasa
+            // 3. Ambil string nama skill (kolom 'name' dari database)
+            const formattedSkills = rawSkillsList.map(item => {
+                if (typeof item === 'string') return item;
+                return item.name || item.skillName || '';
+            }).filter(Boolean);
+
+            console.log("C. Hasil akhir array string skill:", formattedSkills);
+
+            // 4. Simpan ke state
+            setAvailableSkills(formattedSkills);
+
+        } catch (err) {
+            console.error("Gagal mengambil data skill:", err);
+        } finally {
+            setFetching(false);
+        }
+    };
+
+    fetchAllData();
+}, []);
+
+    // Handle Input Teks
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -76,7 +98,7 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
         }));
     };
 
-    // Handle tambah keahlian dari Dropdown
+    // Handle Tambah Skill
     const handleAddSkill = (e) => {
         const value = e.target.value;
         if (value && !formData.skills.includes(value)) {
@@ -84,11 +106,11 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                 ...prev,
                 skills: [...prev.skills, value]
             }));
-            setSelectedSkillInput(""); // Reset dropdown
+            setSelectedSkillInput("");
         }
     };
 
-    // Handle hapus keahlian (Badge Tag)
+    // Handle Hapus Skill
     const handleRemoveSkill = (skillToRemove) => {
         setFormData(prev => ({
             ...prev,
@@ -96,29 +118,63 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
         }));
     };
 
-    // Handle upload foto preview
+    // Handle Ubah Foto Profil 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            const imageUrl = URL.createObjectURL(file);
-            setPreviewAvatar(imageUrl);
-            setFormData(prev => ({
-                ...prev,
-                avatar: file // Menyimpan file asli untuk upload API/FormData
-            }));
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewAvatar(reader.result);
+                setFormData(prev => ({
+                    ...prev,
+                    photo: reader.result
+                }));
+            };
+            reader.readAsDataURL(file);
         }
     };
 
-    // Handle submit form
-    const handleSubmit = (e) => {
+    // Submit Perubahan ke Backend
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (onSave) {
-            onSave(formData);
-        } else {
-            console.log("Data profil diperbarui:", formData);
-            if (onBack) onBack();
+        setIsSaving(true);
+        setErrorMessage("");
+
+        try {
+            const payload = {
+                name: formData.name,
+                phone: formData.phone,
+                description: formData.bio,
+                bio: formData.bio,
+                skills: formData.skills,
+                hourlyRate: Number(formData.hourlyRate),
+                photo: formData.photo
+            };
+
+            await workerApi.updateProfile(activeWorkerId, payload);
+
+            alert("Profil berhasil diperbarui!");
+            navigate('/worker/profile');
+        } catch (err) {
+            console.error("Gagal memperbarui profil:", err);
+            setErrorMessage(err.response?.data?.message || "Terjadi kesalahan saat menyimpan data.");
+        } finally {
+            setIsSaving(false);
         }
     };
+
+    if (fetching) {
+        return (
+            <MobileLayout topNavProps={{ variant: "location" }} bottomNavProps={{ activeTab: "profile" }}>
+                <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-2 text-slate-500">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#007088]" />
+                        <span className="text-xs">Memuat data dari database...</span>
+                    </div>
+                </div>
+            </MobileLayout>
+        );
+    }
 
     return (
         <MobileLayout
@@ -140,11 +196,16 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                         className="p-1.5 rounded-full hover:bg-slate-100 text-gray-600 transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
-                        
                     </button>
                     <h1 className="text-base font-bold text-gray-800">Edit Profil Pekerja</h1>
                     <div className="w-8"></div>
                 </div>
+
+                {errorMessage && (
+                    <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs">
+                        {errorMessage}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-5">
                     
@@ -173,7 +234,7 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                         <span className="text-xs text-gray-500 mt-2">Ketuk ikon kamera untuk ubah foto</span>
                     </div>
 
-                    {/* INPUT FIELD: NAMA */}
+                    {/* NAMA */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                             <User className="w-3.5 h-3.5 text-[#007088]" />
@@ -190,28 +251,51 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                         />
                     </div>
 
-                    {/* DROPDOWN & MULTI-SELECT: PEKERJAAN / KEAHLIAN */}
+                    {/* TARIF PER JAM */}
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                            <DollarSign className="w-3.5 h-3.5 text-[#007088]" />
+                            Tarif per Jam (Rp)
+                        </label>
+                        <input 
+                            type="number" 
+                            name="hourlyRate"
+                            value={formData.hourlyRate}
+                            onChange={handleChange}
+                            required
+                            min="10000"
+                            step="5000"
+                            placeholder="Contoh: 35000"
+                            className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#007088] focus:ring-1 focus:ring-[#007088] transition-all"
+                        />
+                    </div>
+
+                    {/* DROPDOWN DINAMIS SKILL DARI DATABASE */}
                     <div className="flex flex-col gap-2">
                         <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                             <Briefcase className="w-3.5 h-3.5 text-[#007088]" />
                             Pekerjaan & Keterampilan Mampu
                         </label>
                         
-                        {/* Select Dropdown */}
                         <select
                             value={selectedSkillInput}
                             onChange={handleAddSkill}
                             className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#007088] focus:ring-1 focus:ring-[#007088] transition-all cursor-pointer"
                         >
                             <option value="" disabled>-- Pilih / Tambah Keterampilan --</option>
-                            {AVAILABLE_SKILLS.filter(skill => !formData.skills.includes(skill)).map((skill, idx) => (
-                                <option key={idx} value={skill}>
-                                    + {skill}
-                                </option>
-                            ))}
+                            
+                            {/* Rendering Opsi Skill Langsung Dari State Database */}
+                            {availableSkills
+                                .filter(skill => !formData.skills.includes(skill))
+                                .map((skill, idx) => (
+                                    <option key={idx} value={skill}>
+                                        + {skill}
+                                    </option>
+                                ))
+                            }
                         </select>
 
-                        {/* List Badge Keterampilan Terpilih */}
+                        {/* List Skill Terpilih */}
                         <div className="flex flex-wrap gap-1.5 mt-1">
                             {formData.skills.map((skill, index) => (
                                 <span 
@@ -234,7 +318,7 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                         )}
                     </div>
 
-                    {/* INPUT FIELD: EMAIL */}
+                    {/* EMAIL */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                             <Mail className="w-3.5 h-3.5 text-[#007088]" />
@@ -244,14 +328,12 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                             type="email" 
                             name="email"
                             value={formData.email}
-                            onChange={handleChange}
-                            required
-                            placeholder="alamat@email.com"
-                            className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#007088] focus:ring-1 focus:ring-[#007088] transition-all"
+                            disabled
+                            className="w-full px-3.5 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-xs text-gray-500 cursor-not-allowed"
                         />
                     </div>
 
-                    {/* INPUT FIELD: NOMOR TELEPON */}
+                    {/* NOMOR TELEPON */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                             <Phone className="w-3.5 h-3.5 text-[#007088]" />
@@ -268,7 +350,7 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                         />
                     </div>
 
-                    {/* INPUT FIELD: DESKRIPSI WORKER */}
+                    {/* DESKRIPSI WORKER */}
                     <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                             <FileText className="w-3.5 h-3.5 text-[#007088]" />
@@ -287,11 +369,20 @@ export default function EditWorkerProfile({ user, onSave, onBack, isLoading = fa
                     {/* TOMBOL SIMPAN */}
                     <button 
                         type="submit"
-                        disabled={isLoading || formData.skills.length === 0}
+                        disabled={isSaving || formData.skills.length === 0}
                         className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-[#007088] hover:bg-[#005a6e] active:scale-[0.99] disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-md transition-all"
                     >
-                        <Save className="w-4 h-4" />
-                        <span>{isLoading ? "Menyimpan..." : "Simpan Perubahan"}</span>
+                        {isSaving ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Menyimpan...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Save className="w-4 h-4" />
+                                <span>Simpan Perubahan</span>
+                            </>
+                        )}
                     </button>
 
                 </form>

@@ -11,7 +11,7 @@ const getWorkerHourlyRate = (worker) => {
             return Number(firstSkill.hourlyRate);
         }
     }
-    return 30000;
+    return 30000; 
 };
 
 const mockWorkerApi = {
@@ -75,10 +75,26 @@ const mockWorkerApi = {
         return workers[idx];
     },
 
-    getWallet: async (workerId) => {
+    getWallet: async () => {
+
+        
+        const token = localStorage.getItem('ki_token')
         const jobs = (getData('ki_jobs') || []).filter(j => j.workerId === workerId && j.status === 'COMPLETED' && j.escrowStatus === 'Released');
         const totalIncome = jobs.reduce((acc, curr) => acc + curr.price, 0);
 
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const res = await axiosInstance.get(`/worker/${payload.id}`);
+                worker = res.data.data;
+
+                const notifRes = await axiosInstance.get('/notification', { params: { role: 'worker' } });
+                const notifications = notifRes.data.data || [];
+                unreadNotification = notifications.filter(n => !n.isRead).length;
+            } catch (err) {
+                console.error("Failed to load client context for dashboard:", err);
+            }
+        }
         const txs = jobs.map(j => ({
             transactionId: `tx-${j.jobId}`,
             type: 'Job Income',
@@ -318,11 +334,29 @@ const mockWorkerApi = {
 };
 
 const realWorkerApi = {
-    getDashboard: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/${workerId}`);
-        const worker = res.data.data;
+    getDashboard: async () => {
+
+        const token = localStorage.getItem('ki_token');
+        let worker = null;
+        let unreadNotification = 0;
+
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const res = await axiosInstance.get(`/worker/${payload.id}`);
+                worker = res.data.data;
+
+                const notifRes = await axiosInstance.get('/notification', { params: { role: 'worker' } });
+                const notifications = notifRes.data.data || [];
+                unreadNotification = notifications.filter(n => !n.isRead).length;
+            } catch (err) {
+                console.error("Failed to load client context for dashboard:", err);
+            }
+        }
+
         const balance = Number(worker?.balance || 0);
         const hourlyRate = getWorkerHourlyRate(worker);
+
         return {
             photo: worker?.User?.photo || '',
             name: worker?.User?.name || '',
@@ -343,52 +377,95 @@ const realWorkerApi = {
             nextJob: null
         };
     },
-    getProfile: async (workerId) => {
-        const res = await axiosInstance.get(`/worker/${workerId}`);
-        const worker = res.data.data;
-        if (worker) {
-            const hourlyRate = getWorkerHourlyRate(worker);
-            return {
-                ...worker,
-                id: worker.WorkerID,
-                name: worker.User?.name || '',
-                email: worker.User?.email || '',
-                photo: worker.User?.photo || '',
-                phone: worker.User?.phoneNumber || '',
-                address: worker.User?.address || '',
-                hourlyRate
-            };
+
+    getProfile: async () => {
+        const token = localStorage.getItem('ki_token');
+        if (!token) return null;
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const res = await axiosInstance.get(`/worker/${payload.id}`);
+            const worker = res.data.data;
+
+            if (worker) {
+                // Simpan WorkerID & UserID
+                localStorage.setItem('workerId', worker.WorkerID);
+
+                // Ambil data skills
+                const rawSkills = worker.WorkerSkills || worker.Worker_skill || worker.skills || [];
+                
+                // Cari hourly rate dari skill pertama atau fallback
+                const hourlyRate = rawSkills[0]?.hourlyRate ?? worker.hourlyRate ?? 30000;
+
+                const formattedSkills = rawSkills.map(item => ({
+                    id: item.id || item.WorkerSkillID || item.SkillID,
+                    name: item.Skill?.name || item.skillName || item.name || 'Skill',
+                    hourlyRate: item.hourlyRate || hourlyRate,
+                    experienceLevel: item.experienceLevel || item.level || ''
+                }));
+
+                return {
+                    ...worker,
+                    id: worker.WorkerID,
+                    userId: worker.UserID,
+                    name: worker.User?.name || '',
+                    email: worker.User?.email || '',
+                    photo: worker.User?.photo || '',
+                    phone: worker.User?.phoneNumber || worker.User?.phone || '',
+                    address: worker.User?.address || '',
+                    bio: worker.description || worker.bio || '',
+                    hourlyRate: Number(hourlyRate),
+                    skills: formattedSkills,
+                    totalProjects: worker.totalProjects || 0,
+                    rating: worker.rating || 0,
+                    isVerified: worker.isVerified || false
+                };
+            }
+        } catch (error) {
+            console.error("Gagal mengambil data profil:", error);
         }
         return null;
     },
+
     updateProfile: async (workerId, profileData) => {
-        const userData = {};
-        if (profileData.name) userData.name = profileData.name;
-        if (profileData.phone) userData.phoneNumber = profileData.phone;
-        if (profileData.phoneNumber) userData.phoneNumber = profileData.phoneNumber;
-        if (profileData.photo) userData.photo = profileData.photo;
-        if (profileData.address) userData.address = profileData.address;
-        
-        if (Object.keys(userData).length > 0) {
-            const getRes = await axiosInstance.get(`/worker/${workerId}`);
-            const userId = getRes.data.data?.UserID;
-            if (userId) {
-                await axiosInstance.patch(`/user/update`, userData);
+        try {
+            // A. Update ke tabel User
+            const userData = {};
+            if (profileData.name) userData.name = profileData.name;
+            if (profileData.phone) userData.phoneNumber = profileData.phone;
+            if (profileData.phoneNumber) userData.phoneNumber = profileData.phoneNumber;
+            if (profileData.photo) userData.photo = profileData.photo;
+            if (profileData.address) userData.address = profileData.address;
+
+            if (Object.keys(userData).length > 0) {
+                const getRes = await axiosInstance.get(`/worker/${workerId}`);
+                const userId = getRes.data.data?.UserID;
+                if (userId) {
+                    await axiosInstance.patch(`/user/update`, userData);
+                }
             }
+
+            // B. Update ke tabel Worker
+            const workerData = {};
+            if (profileData.description) workerData.description = profileData.description;
+            if (profileData.bio) workerData.description = profileData.bio;
+            if (profileData.status) workerData.status = profileData.status;
+            if (profileData.bankNumber) workerData.bankNumber = profileData.bankNumber;
+            if (profileData.bankAccount) workerData.bankAccount = profileData.bankAccount;
+            if (profileData.hourlyRate) workerData.hourlyRate = profileData.hourlyRate; // <--- Tambahan jika backend mendukung
+
+            if (Object.keys(workerData).length > 0) {
+                await axiosInstance.patch(`/worker/${workerId}`, workerData);
+            }
+
+            // Return data profil terbaru setelah update
+            return await workerApi.getProfile();
+        } catch (error) {
+            console.error("Gagal update profil:", error);
+            throw error;
         }
-
-        const workerData = {};
-        if (profileData.description) workerData.description = profileData.description;
-        if (profileData.status) workerData.status = profileData.status;
-        if (profileData.bankNumber) workerData.bankNumber = profileData.bankNumber;
-        if (profileData.bankAccount) workerData.bankAccount = profileData.bankAccount;
-
-        if (Object.keys(workerData).length > 0) {
-            await axiosInstance.patch(`/worker/${workerId}`, workerData);
-        }
-
-        return await realWorkerApi.getProfile(workerId);
     },
+
     getWallet: async (workerId) => {
         const res = await axiosInstance.get(`/worker/${workerId}`);
         const worker = res.data.data;
@@ -408,9 +485,9 @@ const realWorkerApi = {
         const getRes = await axiosInstance.get(`/worker/${workerId}`);
         const currentBalance = Number(getRes.data.data?.balance || 0);
         const newBalance = currentBalance - Number(amount);
-        
+
         await axiosInstance.patch(`/worker/${workerId}`, { balance: newBalance });
-        
+
         await axiosInstance.post('/notification', {
             title: 'Penarikan Saldo Berhasil',
             description: `Dana sebesar Rp${Number(amount).toLocaleString('id-ID')} telah dikirim ke rekening terdaftar Anda.`,
@@ -421,11 +498,29 @@ const realWorkerApi = {
 
         return { success: true, newBalance };
     },
-    getActiveJobs: async (workerId) => {
-        const res = await axiosInstance.get(`/job`, { params: { WorkerID: workerId } });
-        const jobs = res.data.data || [];
-        return jobs.filter(j => !['COMPLETED', 'CANCELLED'].includes(j.status));
+    getActiveJobs: async () => {
+        const token = localStorage.getItem('ki_token');
+
+        if (token) {
+            try {
+    
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const workerRes = await axiosInstance.get(`/worker/${payload.id}`);
+                const worker = workerRes.data.data;
+                const realWorkerId = worker?.WorkerID || worker?.id;
+
+                if (realWorkerId) {
+                    const res = await axiosInstance.get(`/job`, { params: { WorkerID: realWorkerId } });
+                    const jobs = res.data.data || [];
+                    return jobs.filter(j => !['COMPLETED', 'CANCELLED'].includes(j.status));
+                }
+            } catch (err) {
+                console.error("Failed to load active jobs for worker:", err);
+            }
+        }
+        return [];
     },
+
     getJobDetail: async (jobId) => {
         const res = await axiosInstance.get(`/job/${jobId}`);
         return res.data.data;
@@ -443,16 +538,16 @@ const realWorkerApi = {
         return res.data;
     },
     startJob: async (jobId) => {
-        const res = await axiosInstance.patch(`/job/${jobId}`, { 
-            status: 'IN_PROGRESS', 
-            startedAt: new Date().toISOString() 
+        const res = await axiosInstance.patch(`/job/${jobId}`, {
+            status: 'IN_PROGRESS',
+            startedAt: new Date().toISOString()
         });
         return res.data;
     },
     finishJob: async (jobId) => {
-        const res = await axiosInstance.patch(`/job/${jobId}`, { 
-            status: 'WAITING_CONFIRMATION', 
-            finishedAt: new Date().toISOString() 
+        const res = await axiosInstance.patch(`/job/${jobId}`, {
+            status: 'WAITING_CONFIRMATION',
+            finishedAt: new Date().toISOString()
         });
         return res.data;
     },
@@ -480,6 +575,6 @@ const realWorkerApi = {
     }
 };
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
 export const workerApi = USE_MOCK ? mockWorkerApi : realWorkerApi;
