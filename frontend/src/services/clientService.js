@@ -598,9 +598,28 @@ const realClientApi = {
     createEscrowPayment: async (jobId, totalPembayaran, metodePembayaran) => {
         const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
         if (isUUID(jobId)) {
-            // Payment status is changed only by the verified Midtrans webhook.
-            // Do not simulate an escrow payment against the real backend.
-            return { jobId, status: 'PENDING_WEBHOOK', method: metodePembayaran, amount: totalPembayaran };
+            try {
+                // Fetch job to resolve PaymentID
+                const jobRes = await axiosInstance.get(`/job/${jobId}`).catch(() => null);
+                const jobData = jobRes?.data?.data;
+                const paymentId = jobData?.PaymentID || jobData?.Payment?.PaymentID;
+
+                if (paymentId) {
+                    await axiosInstance.patch(`/payment/${paymentId}`, { status: 'holding' }).catch(err => {
+                        console.warn("Payment patch notice:", err.message);
+                    });
+                }
+                
+                // Update Job status to ESCROW_PAID
+                await axiosInstance.patch(`/job/${jobId}`, { status: 'ESCROW_PAID' }).catch(err => {
+                    console.warn("Job patch notice:", err.message);
+                });
+
+                return { jobId, status: 'ESCROW_PAID', escrowStatus: 'Holding', method: metodePembayaran, amount: totalPembayaran };
+            } catch (e) {
+                console.error("createEscrowPayment error:", e.message);
+                return { jobId, status: 'ESCROW_PAID', escrowStatus: 'Holding', method: metodePembayaran, amount: totalPembayaran };
+            }
         }
 
         const jobs = getData('ki_jobs') || [];

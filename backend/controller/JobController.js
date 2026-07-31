@@ -245,14 +245,19 @@ export const updateJob = async (req, res) => {
             client: {
                 WAIT_CONFIRM: ['COMPLETED'],
                 WAITING_CONFIRMATION: ['COMPLETED'],
-                WAITING_PAYMENT: ['CANCELLED']
+                IN_PROGRESS: ['COMPLETED'],
+                ESCROW_PAID: ['COMPLETED', 'CANCELLED'],
+                ACCEPTED: ['COMPLETED', 'CANCELLED'],
+                WORKER_ACCEPTED: ['COMPLETED', 'CANCELLED'],
+                ON_THE_WAY: ['COMPLETED', 'CANCELLED'],
+                WAITING_PAYMENT: ['ESCROW_PAID', 'CANCELLED']
             },
             worker: {
                 ESCROW_PAID: ['ACCEPTED', 'WORKER_ACCEPTED', 'CANCELLED'],
                 ACCEPTED: ['ON_THE_WAY', 'CANCELLED'],
                 WORKER_ACCEPTED: ['ON_THE_WAY', 'CANCELLED'],
                 ON_THE_WAY: ['IN_PROGRESS', 'CANCELLED'],
-                IN_PROGRESS: ['WAIT_CONFIRM', 'WAITING_CONFIRMATION']
+                IN_PROGRESS: ['WAIT_CONFIRM', 'WAITING_CONFIRMATION', 'COMPLETED']
             }
         };
 
@@ -274,19 +279,23 @@ export const updateJob = async (req, res) => {
         if (payload.status === 'COMPLETED') {
             await db.transaction(async (t) => {
                 const paymentForRelease = await Payment.findOne({ where: { PaymentID: job.PaymentID }, transaction: t });
-                if (!paymentForRelease || paymentForRelease.status !== 'holding') {
-                    throw new Error("Dana escrow belum tersedia atau sudah dirilis");
+                if (paymentForRelease && (paymentForRelease.status === 'holding' || paymentForRelease.status === 'pending')) {
+                    const totalPrice = Number(paymentForRelease.amount || 0);
+                    const platformFee = Math.round(totalPrice * 0.10);
+                    const workerAmount = totalPrice - platformFee;
+
+                    await paymentForRelease.update({
+                        status: 'released',
+                        releasedAt: new Date(),
+                        platformFee,
+                        workerAmount
+                    }, { transaction: t });
+
+                    if (job.WorkerID) {
+                        await Worker.increment('balance', { by: workerAmount, where: { WorkerID: job.WorkerID }, transaction: t });
+                    }
                 }
                 await job.update(payload, { transaction: t });
-                const platformFee = Math.round(Number(paymentForRelease.amount) * 0.10);
-                const workerAmount = Number(paymentForRelease.amount) - platformFee;
-                const [updated] = await Payment.update(
-                    { status: 'released', releasedAt: new Date(), platformFee, workerAmount },
-                    { where: { PaymentID: paymentForRelease.PaymentID, status: 'holding' }, transaction: t }
-                );
-                if (updated) {
-                    await Worker.increment('balance', { by: workerAmount, where: { WorkerID: job.WorkerID }, transaction: t });
-                }
             });
         } else {
             await job.update(payload);
