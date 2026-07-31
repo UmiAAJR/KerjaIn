@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { workerApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from "../../components/layout/MobileLayout";
-import { workerApi } from '../../services/api';
 import { showAlert } from '../../utils/swal';
 import axiosInstance from '../../services/axiosInstance';
 

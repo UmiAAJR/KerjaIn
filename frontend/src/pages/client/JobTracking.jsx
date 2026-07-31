@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   Banknote, 
   AlertCircle,
-  Zap
+  Zap,
+  Calendar
 } from 'lucide-react';
 import ReviewModal from './components/ReviewModal';
 

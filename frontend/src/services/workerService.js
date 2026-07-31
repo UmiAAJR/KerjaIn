@@ -496,6 +496,7 @@ const realWorkerApi = {
             if (userId) {
                 await axiosInstance.patch(`/user/update`, userData);
             }
+        }
 
         const workerData = {};
         if (profileData.description) workerData.description = profileData.description;
