@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
-import { Plus, Trash, AlertCircle, Wrench, Layers, HelpCircle, ChevronDown, ChevronUp, PlusCircle, Check } from 'lucide-react';
+import { showAlert, showConfirm } from '../../utils/swal';
+import { Plus, Trash, AlertCircle, Wrench, Layers, HelpCircle, ChevronDown, ChevronUp, PlusCircle, Check, X } from 'lucide-react';
 
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -16,7 +17,7 @@ const AdminCategories = () => {
       const res = await adminApi.getCategories();
       setCategories(res || []);
     } catch (err) {
-      console.error("Error fetching categories:", err);
+      console.error("Failed to fetch categories:", err);
     } finally {
       setLoading(false);
     }
@@ -32,20 +33,28 @@ const AdminCategories = () => {
     try {
       await adminApi.createCategory(newCatName.trim());
       setNewCatName('');
+      showAlert("Berhasil", "success", "Kategori baru berhasil ditambahkan!");
       fetchCategories();
     } catch (err) {
-      alert("Gagal menambahkan kategori: " + err.message);
+      showAlert("Gagal", "error", "Gagal menambahkan kategori: " + err.message);
     }
   };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus kategori ini? Seluruh data sub-skill di dalamnya juga akan terhapus.")) return;
+    const isConfirmed = await showConfirm(
+      "Konfirmasi Hapus Kategori",
+      "Apakah Anda yakin ingin menghapus kategori ini? Seluruh data sub-skill di dalamnya juga akan terhapus.",
+      "Ya, Hapus",
+      "warning"
+    );
+    if (!isConfirmed) return;
     try {
       await adminApi.deleteCategory(id);
       if (expandedCatId === id) setExpandedCatId(null);
+      showAlert("Berhasil", "info", "Kategori berhasil dihapus.");
       fetchCategories();
     } catch (err) {
-      alert("Gagal menghapus kategori: " + err.message);
+      showAlert("Gagal", "error", "Gagal menghapus kategori: " + err.message);
     }
   };
 
@@ -55,19 +64,22 @@ const AdminCategories = () => {
     try {
       await adminApi.createSkill(categoryId, newSkillName.trim());
       setNewSkillName('');
+      showAlert("Berhasil", "success", "Sub-skill berhasil ditambahkan!");
       fetchCategories();
     } catch (err) {
-      alert("Gagal menambahkan skill: " + err.message);
+      showAlert("Gagal", "error", "Gagal menambahkan skill: " + err.message);
     }
   };
 
   const handleDeleteSkill = async (categoryId, skillId) => {
-    if (!window.confirm("Hapus sub-skill ini?")) return;
+    const isConfirmed = await showConfirm("Konfirmasi Hapus", "Hapus sub-skill ini?", "Ya, Hapus", "warning");
+    if (!isConfirmed) return;
     try {
       await adminApi.deleteSkill(categoryId, skillId);
+      showAlert("Berhasil", "info", "Sub-skill berhasil dihapus.");
       fetchCategories();
     } catch (err) {
-      alert("Gagal menghapus skill: " + err.message);
+      showAlert("Gagal", "error", "Gagal menghapus skill: " + err.message);
     }
   };
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { workerApi } from '../../services/api'; // Path service kamu
+import { workerApi } from '../../services/api';
+import { showAlert, showConfirm } from '../../utils/swal';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { useNavigate } from 'react-router-dom';
 import {
@@ -11,7 +12,13 @@ import {
   MessageSquare,
   Sparkles,
   Zap,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Play,
+  Check,
+  X,
+  Phone
 } from 'lucide-react';
 
 export default function WorkerActivity() {
@@ -25,11 +32,10 @@ export default function WorkerActivity() {
   const [isOnline, setIsOnline] = useState(true);
   const [isToggling, setIsToggling] = useState(false);
 
-  // 1. FUNGSI FETCH DATA PEKERJAAN AKTIF
+  // 1. FETCH DATA PEKERJAAN AKTIF
   const fetchActiveJobs = async () => {
     try {
-      setLoading(true);
-      const data = await workerApi.getActiveJobs(); // 💡 Memanggil fungsi getActiveJobs
+      const data = await workerApi.getActiveJobs();
       setJobs(data || []);
     } catch (error) {
       console.error('Gagal mengambil data pekerjaan:', error);
@@ -40,7 +46,15 @@ export default function WorkerActivity() {
 
   // 2. RUN FETCH SAAT KOMPONEN PERTAMA KALI DIMUAT
   useEffect(() => {
+    setLoading(true);
     fetchActiveJobs();
+
+    // Poll status update every 5 seconds
+    const timer = setInterval(() => {
+      fetchActiveJobs();
+    }, 5000);
+
+    return () => clearInterval(timer);
   }, []);
 
   // HANDLER TOGGLE STATUS KERJA
@@ -48,49 +62,92 @@ export default function WorkerActivity() {
     try {
       setIsToggling(true);
       const newStatus = !isOnline;
-      
-      // Jika ada API backend untuk update status online/offline:
-      // await workerApi.updateOnlineStatus(newStatus);
-      
       setIsOnline(newStatus);
+      showAlert("Status Diubah", "info", `Anda sekarang ${newStatus ? 'Online' : 'Offline'}`);
     } catch (error) {
-      alert('Gagal mengubah status: ' + error.message);
+      showAlert("Gagal", "error", 'Gagal mengubah status: ' + error.message);
     } finally {
       setIsToggling(false);
     }
   };
 
-  // HANDLER TERIMA PEKERJAAN
+  // HANDLERS TRANSISI STATUS PEKERJAAN
   const handleAccept = async (jobId) => {
     try {
       setActionLoading(jobId);
       await workerApi.acceptBooking(jobId);
-      await fetchActiveJobs(); 
+      showAlert("Pekerjaan Diterima!", "success", "Anda telah menerima tawaran pekerjaan ini.");
+      await fetchActiveJobs();
     } catch (error) {
-      alert('Gagal menerima pekerjaan: ' + error.message);
+      showAlert("Gagal", "error", 'Gagal menerima pekerjaan: ' + error.message);
     } finally {
       setActionLoading(null);
     }
   };
 
-  // HANDLER TOLAK PEKERJAAN
   const handleReject = async (jobId) => {
-    if (!window.confirm('Apakah Anda yakin ingin menolak pekerjaan ini?')) return;
+    const isConfirmed = await showConfirm("Konfirmasi Penolakan", "Apakah Anda yakin ingin menolak pekerjaan ini?", "Ya, Tolak", "warning");
+    if (!isConfirmed) return;
     try {
       setActionLoading(jobId);
       await workerApi.rejectBooking(jobId);
-      await fetchActiveJobs(); // Refresh data otomatis setelah tolak
+      showAlert("Pekerjaan Ditolak", "info", "Tawaran pekerjaan telah ditolak.");
+      await fetchActiveJobs();
     } catch (error) {
-      alert('Gagal menolak pekerjaan: ' + error.message);
+      showAlert("Gagal", "error", 'Gagal menolak pekerjaan: ' + error.message);
     } finally {
       setActionLoading(null);
     }
   };
 
+  const handleOnTheWay = async (jobId) => {
+    try {
+      setActionLoading(jobId);
+      await workerApi.updateOnTheWay(jobId);
+      showAlert("Menuju Lokasi", "info", "Status diperbarui: Anda dalam perjalanan ke lokasi klien.");
+      await fetchActiveJobs();
+    } catch (error) {
+      showAlert("Gagal", "error", 'Gagal memperbarui status: ' + error.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleStartJob = async (jobId) => {
+    try {
+      setActionLoading(jobId);
+      await workerApi.startJob(jobId);
+      showAlert("Pekerjaan Dimulai!", "success", "Selamat bekerja! Pekerjaan telah resmi dimulai.");
+      await fetchActiveJobs();
+    } catch (error) {
+      showAlert("Gagal", "error", 'Gagal memulai pekerjaan: ' + error.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleFinishJob = async (jobId) => {
+    try {
+      setActionLoading(jobId);
+      await workerApi.finishJob(jobId);
+      showAlert("Pekerjaan Selesai!", "success", "Pekerjaan berhasil diselesaikan! Menunggu konfirmasi dari klien.");
+      await fetchActiveJobs();
+    } catch (error) {
+      showAlert("Gagal", "error", 'Gagal menyelesaikan pekerjaan: ' + error.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Helper untuk menentukan status kategori UI ('Menunggu' / 'Berlangsung' / 'Menunggu Konfirmasi')
   const getUiStatus = (status) => {
-    // Sesuaikan status pending / menunggu dari backend
-    if (['PENDING', 'WAITING_PAYMENT', 'ESCROW_PAID'].includes(status)) {
+    if (!status) return 'Menunggu';
+    const s = String(status).toUpperCase();
+    if (['WAITING_PAYMENT', 'ESCROW_PAID', 'PENDING', 'HOLDING'].includes(s)) {
       return 'Menunggu';
+    }
+    if (['WAIT_CONFIRM', 'WAITING_CONFIRMATION', 'WAIT_CONF'].includes(s)) {
+      return 'Menunggu Konfirmasi';
     }
     return 'Berlangsung';
   };
@@ -102,12 +159,12 @@ export default function WorkerActivity() {
     return uiStatus === activeTab;
   });
 
-  const tabs = ['Semua Pekerjaan', 'Berlangsung', 'Menunggu'];
+  const tabs = ['Semua Pekerjaan', 'Menunggu', 'Berlangsung', 'Menunggu Konfirmasi'];
 
   const historyButton = (
     <button
       onClick={() => navigate('/worker/history')}
-      className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl"
+      className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl cursor-pointer"
     >
       <Clock size={20} />
     </button>
@@ -122,14 +179,14 @@ export default function WorkerActivity() {
         rightElement: historyButton
       }}
     >
-      <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 p-4 pb-20">
+      <div className="w-full max-w-md mx-auto min-h-screen bg-slate-50 p-4 pb-20 text-left">
 
         {/* HEADER & TOGGLE STATUS */}
         <div className="mb-4 flex items-center justify-between gap-2">
           <div>
             <h1 className="text-xl font-bold text-[#001d28]">Aktivitas Saya</h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Kelola pekerjaan dan permintaan baru.
+              Kelola pekerjaan dan pembaruan status pengerjaan.
             </p>
           </div>
 
@@ -150,66 +207,81 @@ export default function WorkerActivity() {
                 }`}
               />
             </button>
-            <span className={`text-[10px] font-semibold ${isOnline ? 'text-[#008953]' : 'text-gray-400'}`}>
-              {isOnline ? 'Siap Bekerja' : 'Off / Istirahat'}
+            <span className="text-[10px] font-semibold text-gray-500">
+              {isOnline ? 'Aktif Menerima' : 'Tidak Aktif'}
             </span>
           </div>
         </div>
 
-        {/* TAB NAVIGASI */}
-        <div className="flex border-b border-gray-200 mb-4 text-sm font-medium overflow-x-auto no-scrollbar gap-6">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-2 px-1 whitespace-nowrap transition-colors border-b-2 ${
-                  isActive
-                    ? 'border-[#007088] text-[#007088] font-semibold'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab}
-              </button>
-            );
-          })}
+        {/* TAB FILTER STATUS */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer ${
+                activeTab === tab
+                  ? 'bg-[#007088] text-white shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-100 hover:bg-gray-50'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
         {/* DAFTAR KARTU PEKERJAAN */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-            <Loader2 className="w-6 h-6 animate-spin mb-2" />
-            <p className="text-xs">Memuat pekerjaan...</p>
+            <Loader2 className="w-6 h-6 animate-spin mb-2 text-[#007088]" />
+            <p className="text-xs font-medium">Memuat pekerjaan...</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             {filteredJobs.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-10">
-                Tidak ada pekerjaan di kategori ini.
-              </p>
+              <div className="text-center py-12 space-y-2 bg-white rounded-2xl border border-gray-100 p-6">
+                <p className="text-xs font-bold text-gray-400">
+                  Tidak ada pekerjaan di kategori ini.
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Pesanan baru dari client akan muncul di sini secara otomatis.
+                </p>
+              </div>
             ) : (
               filteredJobs.map((job) => {
                 const uiStatus = getUiStatus(job.status);
                 const isPending = uiStatus === 'Menunggu';
-                const id = job.JobID || job.jobId || job.id;
+                const isWaitConfirm = uiStatus === 'Menunggu Konfirmasi';
+                const id = job.jobId || job.id;
 
                 return (
                   <div
                     key={id}
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden"
+                    className="bg-white rounded-2xl p-4 shadow-xs border border-gray-100 relative overflow-hidden space-y-3"
                   >
                     {/* BADGE STATUS */}
                     <div
-                      className={`absolute top-0 right-0 text-white text-[11px] font-semibold px-3 py-1 rounded-bl-xl ${
-                        isPending ? 'bg-[#fea619]' : 'bg-[#008953]'
+                      className={`absolute top-0 right-0 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl tracking-wide uppercase ${
+                        isPending
+                          ? 'bg-[#fea619]'
+                          : isWaitConfirm
+                          ? 'bg-amber-600'
+                          : 'bg-[#008953]'
                       }`}
                     >
-                      {isPending ? 'Permintaan Baru' : 'Sedang Berjalan'}
+                      {isPending
+                        ? 'Permintaan Baru'
+                        : isWaitConfirm
+                        ? 'Menunggu Konfirmasi'
+                        : job.status === 'ON_THE_WAY'
+                        ? 'OTW ke Lokasi'
+                        : job.status === 'IN_PROGRESS'
+                        ? 'Sedang Dikerjakan'
+                        : 'Pekerjaan Diterima'}
                     </div>
 
                     {/* USER INFO */}
-                    <div className="flex items-center gap-3 mb-3 pr-28">
+                    <div className="flex items-center gap-3 pt-1 pr-32">
                       <img
                         src={
                           job.clientAvatar ||
@@ -218,124 +290,172 @@ export default function WorkerActivity() {
                             job.clientName || job.Client?.User?.name || 'Client'
                           )}&background=random`
                         }
-                        alt={job.clientName || 'Client'}
-                        className="w-12 h-12 rounded-full object-cover"
+                        alt={job.clientName}
+                        className="w-12 h-12 rounded-full object-cover border border-slate-100 shrink-0"
                       />
-                      <div>
-                        <h3 className="font-bold text-gray-800 text-sm">
-                          {job.clientName || job.Client?.User?.name || 'Pelanggan'}
+                      <div className="min-w-0 flex-grow">
+                        <h3 className="font-bold text-gray-800 text-sm truncate">
+                          {job.clientName || 'Pelanggan'}
                         </h3>
-                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                          {!isPending ? (
-                            <Zap className="w-3 h-3 text-gray-400" />
-                          ) : (
-                            <Sparkles className="w-3 h-3 text-gray-400" />
-                          )}
-                          {job.service || job.title || 'Layanan Pekerjaan'}
+                        <p className="text-xs text-[#007088] font-bold flex items-center gap-1 mt-0.5 truncate">
+                          <Zap className="w-3.5 h-3.5 shrink-0" />
+                          <span>{job.service}</span>
                         </p>
                       </div>
                     </div>
 
-                    <hr className="border-gray-100 my-2" />
+                    <hr className="border-gray-100" />
 
                     {/* DETAILS */}
-                    <div className="flex flex-col gap-1.5 text-xs text-gray-500 my-3">
+                    <div className="flex flex-col gap-2 text-xs text-gray-500">
                       <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1.5">
-                          {!isPending ? (
-                            <>
-                              <MapPin className="w-3.5 h-3.5" /> Lokasi
-                            </>
-                          ) : (
-                            <>
-                              <Navigation className="w-3.5 h-3.5" /> Jarak
-                            </>
-                          )}
+                        <span className="flex items-center gap-1.5 text-gray-400 font-medium">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" /> Lokasi
                         </span>
-                        <span className="font-medium text-gray-700">
-                          {job.address || job.location || job.distance || 'Lokasi tidak tersedia'}
+                        <span className="font-bold text-gray-700 truncate max-w-[200px]">
+                          {job.address || job.distance || 'Lokasi tidak tersedia'}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1.5">
-                          {!isPending ? (
-                            <>
-                              <Clock className="w-3.5 h-3.5" /> Mulai
-                            </>
-                          ) : (
-                            <>
-                              <Calendar className="w-3.5 h-3.5" /> Waktu
-                            </>
-                          )}
+                        <span className="flex items-center gap-1.5 text-gray-400 font-medium">
+                          <Clock className="w-3.5 h-3.5 shrink-0" /> Waktu
                         </span>
-                        <span className="font-medium text-gray-700">
+                        <span className="font-bold text-gray-700">
                           {job.schedule || job.date || '-'}
                         </span>
                       </div>
 
                       <div className="flex justify-between items-center">
-                        <span className="flex items-center gap-1.5">
-                          <Banknote className="w-3.5 h-3.5" /> Harga
+                        <span className="flex items-center gap-1.5 text-gray-400 font-medium">
+                          <Banknote className="w-3.5 h-3.5 shrink-0" /> Harga
                         </span>
-                        <span className="font-bold text-[#007088] text-sm">
-                          Rp {(Number(job.price || job.totalAmount || 0)).toLocaleString('id-ID')}
+                        <span className="font-extrabold text-[#007088] text-sm">
+                          Rp {(job.price || 0).toLocaleString('id-ID')}
                         </span>
                       </div>
                     </div>
 
                     {/* KHUSUS PEKERJAAN BERLANGSUNG: PROGRESS BAR */}
                     {!isPending && (
-                      <div className="w-full bg-blue-100 h-2 rounded-full overflow-hidden mb-3">
-                        <div
-                          className="bg-[#008953] h-full rounded-full transition-all duration-300"
-                          style={{
-                            width:
-                              job.status === 'WORKER_ACCEPTED'
-                                ? '25%'
-                                : job.status === 'ON_THE_WAY'
-                                ? '50%'
-                                : job.status === 'IN_PROGRESS'
-                                ? '75%'
-                                : '90%'
-                          }}
-                        />
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between items-center text-[10px] font-bold text-gray-400">
+                          <span>Progres Pengerjaan</span>
+                          <span>
+                            {job.status === 'ACCEPTED' || job.status === 'WORKER_ACCEPTED'
+                              ? '25%'
+                              : job.status === 'ON_THE_WAY'
+                              ? '50%'
+                              : job.status === 'IN_PROGRESS'
+                              ? '75%'
+                              : '90%'}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-[#008953] h-full rounded-full transition-all duration-300"
+                            style={{
+                              width:
+                                job.status === 'ACCEPTED' || job.status === 'WORKER_ACCEPTED'
+                                  ? '25%'
+                                  : job.status === 'ON_THE_WAY'
+                                  ? '50%'
+                                  : job.status === 'IN_PROGRESS'
+                                  ? '75%'
+                                  : '90%'
+                            }}
+                          />
+                        </div>
                       </div>
                     )}
 
-                    <hr className="border-gray-100 mb-3" />
+                    <hr className="border-gray-100" />
 
-                    {/* ACTION BUTTONS */}
-                    {isPending ? (
-                      <div className="grid grid-cols-2 gap-3">
+                    {/* ACTION BUTTONS WORKER */}
+                    <div className="space-y-2 pt-1">
+                      {isPending ? (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            disabled={actionLoading === id}
+                            onClick={() => handleAccept(id)}
+                            className="w-full py-2.5 bg-[#007088] hover:bg-[#005c70] text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            {actionLoading === id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              'Terima Pekerjaan'
+                            )}
+                          </button>
+                          <button
+                            disabled={actionLoading === id}
+                            onClick={() => handleReject(id)}
+                            className="w-full py-2.5 bg-white border border-red-500 text-red-500 hover:bg-red-50 text-xs font-bold rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
+                          >
+                            Tolak
+                          </button>
+                        </div>
+                      ) : job.status === 'ACCEPTED' || job.status === 'WORKER_ACCEPTED' ? (
                         <button
                           disabled={actionLoading === id}
-                          onClick={() => handleAccept(id)}
-                          className="w-full py-2 bg-[#007088] hover:bg-[#005c70] text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                          onClick={() => handleOnTheWay(id)}
+                          className="w-full py-2.5 bg-[#008953] hover:bg-[#007345] text-white text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
                         >
                           {actionLoading === id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            'Terima'
+                            <>
+                              <Navigation className="w-4 h-4" />
+                              <span>OTW ke Lokasi Client</span>
+                            </>
                           )}
                         </button>
+                      ) : job.status === 'ON_THE_WAY' ? (
                         <button
                           disabled={actionLoading === id}
-                          onClick={() => handleReject(id)}
-                          className="w-full py-2 bg-white border border-red-500 text-red-500 hover:bg-red-50 text-xs font-semibold rounded-xl transition-colors disabled:opacity-50"
+                          onClick={() => handleStartJob(id)}
+                          className="w-full py-2.5 bg-[#007088] hover:bg-[#005c70] text-white text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
                         >
-                          Tolak
+                          {actionLoading === id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Zap className="w-4 h-4" />
+                              <span>Mulai Mengerjakan Jasa</span>
+                            </>
+                          )}
                         </button>
-                      </div>
-                    ) : (
+                      ) : job.status === 'IN_PROGRESS' ? (
+                        <button
+                          disabled={actionLoading === id}
+                          onClick={() => handleFinishJob(id)}
+                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99]"
+                        >
+                          {actionLoading === id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>Selesaikan Pekerjaan</span>
+                            </>
+                          )}
+                        </button>
+                      ) : isWaitConfirm ? (
+                        <div className="w-full py-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-2">
+                          <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                          <span>Menunggu Konfirmasi Selesai dari Client</span>
+                        </div>
+                      ) : null}
+
+                      {/* TOMBOL DETAIL PEKERJAAN - SELALU TAMPIL DIBAGIAN BAWAH KARTU */}
                       <button
-                        onClick={() => navigate(`/worker/tracking/${id}`)}
-                        className="w-full py-2.5 bg-[#e0edff] hover:bg-[#d0e3ff] text-[#007088] text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                        onClick={() => navigate(`/worker/detailpekerjaan?id=${id}`)}
+                        className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Detail & Hubungi Client</span>
+                        <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Detail Pekerjaan</span>
                       </button>
-                    )}
+                    </div>
+
                   </div>
                 );
               })

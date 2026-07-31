@@ -10,6 +10,14 @@ export default class Notification extends Model {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true
     },
+    UserID: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'user',
+        key: 'UserID'
+      }
+    },
     title: {
       type: DataTypes.STRING(100),
       allowNull: true
@@ -29,6 +37,11 @@ export default class Notification extends Model {
     actionLink: {
       type: DataTypes.STRING(255),
       allowNull: true
+    },
+    isRead: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
     }
   }, {
     sequelize,
@@ -50,3 +63,4 @@ export default class Notification extends Model {
   });
   }
 }
+

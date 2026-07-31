@@ -3,20 +3,14 @@ import { workerApi } from '../../services/api'; // atau '../../services/workerSe
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  TrendingUp,
-  History,
-  Zap,
-  ClipboardCheck,
-  Clock,
-  Star,
-  Calendar,
-  MapPin
+  TrendingUp, History, Zap, ClipboardCheck, Clock, Timer, Star, Calendar, MapPin, ShieldAlert, ChevronRight
 } from 'lucide-react';
 
 export default function WorkerDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [verification, setVerification] = useState(null);
 
   // Helper format rupiah
   const formatRupiah = (number) => {
@@ -27,20 +21,24 @@ export default function WorkerDashboard() {
     }).format(number || 0);
   };
 
+  useEffect(() => {
+    const currentWorkerId = localStorage.getItem('workerId') || 'me';
 
- useEffect(() => {
-  const fetchDashboard = async () => {
-    // 1. Ambil workerId dari state/context/storage terlebih dahulu
-    
-    // 2. Oper workerId ke service
-    const d = await workerApi.getDashboard();
-    setData(d)
-    setLoading(false)
-  };
-
-  fetchDashboard();
-}, []);
-
+    setLoading(true);
+    Promise.all([
+      workerApi.getDashboard(currentWorkerId),
+      workerApi.getVerification(currentWorkerId)
+    ])
+      .then(([dashRes, verifRes]) => {
+        setData(dashRes);
+        setVerification(verifRes);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Gagal mengambil data dashboard:", err);
+        setLoading(false);
+      });
+  }, []);
 
   if (loading) {
     return (
@@ -62,8 +60,10 @@ export default function WorkerDashboard() {
     );
   }
 
-  // Destructuring aman dari data workerService
-  const { name, income, order, nextJob, photo, rating } = data;
+  const { name, income, order, nextJob, status: workerStatus } = data;
+
+  const isVerified = workerStatus === 'verified' || verification?.status === 'accepted' || verification?.status === 'approved';
+  const isPendingVerif = workerStatus === 'pending_verification' || verification?.status === 'pending';
 
   return (
     <MobileLayout
@@ -75,16 +75,46 @@ export default function WorkerDashboard() {
         activeTab: "home",
       }}
     >
-      <div className="px-5 pt-5 pb-8 space-y-6 relative">
+      <div className="px-5 pt-5 pb-8 space-y-5 relative text-left">
         {/* Heading */}
         <div>
           <h2 className="text-2xl font-black text-primary-600 font-heading tracking-tight leading-tight">
             Halo, {data.name} !
           </h2>
-          <h3 className="text-sm text-gray-500">
+          <h3 className="text-sm text-gray-500 mt-0.5">
             Siap untuk menyelesaikan pekerjaan hari ini?
           </h3>
         </div>
+
+        {/* UNVERIFIED / PENDING VERIFICATION ALERT BANNER */}
+        {!isVerified && (
+          <div className="w-full max-w-sm rounded-2xl bg-amber-50 border border-amber-200/90 p-4 shadow-xs space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 rounded-xl text-amber-800 shrink-0 mt-0.5">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-xs font-black text-amber-900 uppercase tracking-wider">
+                  {isPendingVerif ? 'Verifikasi Sedang Diproses' : 'Akun Anda Belum Diverifikasi'}
+                </h4>
+                <p className="text-xs font-medium text-amber-800 leading-relaxed">
+                  {isPendingVerif 
+                    ? 'Dokumen identitas KTP & Selfie Anda sedang ditinjau. Anda belum dapat menerima pesanan baru sampai akun disetujui.'
+                    : 'Anda belum melengkapi verifikasi identitas KTP & Selfie. Akun Anda tidak dapat menerima pekerjaan atau melakukan penarikan saldo.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate('/worker/verification')}
+              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.99]"
+            >
+              <span>{isPendingVerif ? 'Cek Status Verifikasi' : 'Verifikasi Akun Sekarang'}</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Box Saldo dan Riwayat */}
         <div className="relative w-full max-w-sm rounded-2xl bg-[#0e7490] p-5 text-white shadow-md">
@@ -149,102 +179,61 @@ export default function WorkerDashboard() {
             <div className="flex flex-col items-center justify-center px-1">
               <p className="text-xs font-medium text-slate-600">Bulan Ini</p>
               <div className="mt-1 text-center">
-                <p className="text-sm font-extrabold leading-tight text-[#005B66]">
-                  {formatRupiah(data?.monthlyIncome)}
+                <p className="text-sm font-extrabold leading-tight text-gray-900">
+                  {formatRupiah(income?.monthlyIncome)}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Container Scroll Horizontal Stats */}
-        <div className="no-scrollbar overflow-x-auto flex items-center gap-3.5">
-          {/* Order Aktif */}
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#f9e8d1] border border-[#fbcd87] p-4 items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fea619] text-white">
-              <Zap className="h-5 w-5" />
+        {/* PROSES PESANAN (3 KOTAK RINGKASAN ORDER) */}
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+          <h4 className="text-xs font-bold tracking-wider text-slate-500 uppercase mb-4">
+            PROSES PESANAN HARI INI
+          </h4>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {/* Aktif */}
+            <div className="flex flex-col items-center justify-center rounded-xl bg-cyan-50/60 p-3 border border-cyan-100">
+              <Zap className="h-5 w-5 text-cyan-600 mb-1" />
+              <span className="text-lg font-black text-slate-800">{order?.activeOrder || 0}</span>
+              <span className="text-[10px] font-bold text-slate-500">Aktif</span>
             </div>
-            <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{data?.activeOrder || 0}</span>
-              <p className="text-xs font-medium text-gray-700">Order Aktif</p>
-            </div>
-          </div>
 
-          {/* Pending Order */}
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#e0f2fe] border border-[#bae6fd] p-4 items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0284c7] text-white">
-              <Clock className="h-5 w-5" />
+            {/* Menunggu */}
+            <div className="flex flex-col items-center justify-center rounded-xl bg-amber-50/60 p-3 border border-amber-100">
+              <Clock className="h-5 w-5 text-amber-600 mb-1" />
+              <span className="text-lg font-black text-slate-800">{order?.pendingOrder || 0}</span>
+              <span className="text-[10px] font-bold text-slate-500">Menunggu</span>
             </div>
-            <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{data?.pendingOrder || 0}</span>
-              <p className="text-xs font-medium text-gray-700">Menunggu</p>
-            </div>
-          </div>
 
-          {/* Order Selesai */}
-          <div className="flex flex-row shrink-0 w-48 rounded-2xl bg-[#dcfce7] border border-[#86efac] p-4 items-center">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#16a34a] text-white">
-              <ClipboardCheck className="h-5 w-5" />
-            </div>
-            <div className="pl-3">
-              <span className="text-xl font-bold leading-tight">{data?.completeOrder || 0}</span>
-              <p className="text-xs font-medium text-gray-700">Selesai</p>
+            {/* Selesai */}
+            <div className="flex flex-col items-center justify-center rounded-xl bg-emerald-50/60 p-3 border border-emerald-100">
+              <ClipboardCheck className="h-5 w-5 text-emerald-600 mb-1" />
+              <span className="text-lg font-black text-slate-800">{order?.completeOrder || 0}</span>
+              <span className="text-[10px] font-bold text-slate-500">Selesai</span>
             </div>
           </div>
         </div>
 
-        {/* PEKERJAAN SELANJUTNYA */}
-        {nextJob ? (
-          <div className="relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-            <div className="absolute top-0 right-0 rounded-bl-xl bg-[#F9A825] px-3 py-1">
-              <span className="text-xs font-bold text-[#5D3A00]">
-                Mulai {data.schedule || 'Segera'}
+        {/* PEKERJAAN NEXT */}
+        {nextJob && (
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-xs font-black text-[#007088] uppercase tracking-wider">Pekerjaan Berikutnya</span>
+              <span className="text-[10px] font-bold bg-cyan-50 text-[#007088] px-2 py-0.5 rounded-md">
+                {nextJob.service}
               </span>
             </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <img
-                src={photo || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=150&auto=format&fit=crop&q=60"}
-                alt={data.clientName || "Client"}
-                className="h-16 w-16 rounded-xl object-cover"
-              />
-
-              <div className="flex flex-col justify-center">
-                <span className="text-xs font-bold text-[#005B66]">
-                  {data.service || 'Layanan Pekerjaan'}
-                </span>
-                <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                  {data.clientName || 'Nama Client'}
-                </h3>
-                <div className="flex items-center gap-1 text-xs text-slate-600 font-medium mt-0.5">
-                  <Star className="h-3.5 w-3.5 fill-slate-800 text-slate-800" />
-                  <span>{rating || 5.0} (Top Client)</span>
-                </div>
-              </div>
+            <div className="space-y-1.5 text-xs text-slate-600">
+              <p className="font-bold text-slate-800">{nextJob.clientName}</p>
+              <p className="flex items-center gap-1.5 text-slate-500">
+                <Calendar size={13} /> {nextJob.schedule}
+              </p>
+              <p className="flex items-center gap-1.5 text-slate-500">
+                <MapPin size={13} /> {nextJob.location}
+              </p>
             </div>
-
-            <div className="border-b border-slate-200/80 my-1" />
-
-            <div className="flex items-center gap-3 text-slate-700">
-              <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
-              <span className="text-sm font-semibold">{nextJob.schedule || '-'}</span>
-            </div>
-
-            <div className="flex items-center gap-3 text-slate-700">
-              <MapPin className="h-5 w-5 text-slate-500 shrink-0" />
-              <span className="text-sm font-semibold">{nextJob.location || '-'}</span>
-            </div>
-
-            <button
-              onClick={() => navigate('/worker/jobs')}
-              className="mt-2 w-full rounded-xl bg-[#005B66] py-3 text-center text-sm font-bold text-white transition hover:bg-[#004852] active:scale-[0.98]"
-            >
-              Lihat Detail Pekerjaan
-            </button>
-          </div>
-        ) : (
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center text-gray-500 text-sm">
-            Tidak ada pekerjaan mendatang saat ini.
           </div>
         )}
 

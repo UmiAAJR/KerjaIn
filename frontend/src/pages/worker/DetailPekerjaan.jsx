@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  Navigation
+  Navigation,
+  Zap
 } from 'lucide-react';
 
 export default function WorkerDetailPekerjaan() {
@@ -240,25 +241,49 @@ export default function WorkerDetailPekerjaan() {
             <div className="flex justify-center p-3">
               <Loader2 className="w-6 h-6 animate-spin text-[#007088]" />
             </div>
-          ) : jobDetail?.status === 'ACCEPTED' ? (
+          ) : jobDetail?.status === 'ACCEPTED' || jobDetail?.status === 'WORKER_ACCEPTED' ? (
             <button
               type="button"
-              onClick={() => handleUpdateStatus('COMPLETED')}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#007088] py-3.5 font-bold text-white shadow-md hover:bg-[#005B66] active:scale-[0.98] transition"
+              onClick={() => handleUpdateStatus('ON_THE_WAY')}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#008953] py-3.5 font-bold text-white shadow-md hover:bg-[#007345] active:scale-[0.98] transition cursor-pointer"
+            >
+              <Navigation className="h-5 w-5" />
+              <span>OTW ke Lokasi Client</span>
+            </button>
+          ) : jobDetail?.status === 'ON_THE_WAY' ? (
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus('IN_PROGRESS')}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#007088] py-3.5 font-bold text-white shadow-md hover:bg-[#005c70] active:scale-[0.98] transition cursor-pointer"
+            >
+              <Zap className="h-5 w-5" />
+              <span>Mulai Mengerjakan Jasa</span>
+            </button>
+          ) : jobDetail?.status === 'IN_PROGRESS' ? (
+            <button
+              type="button"
+              onClick={() => handleUpdateStatus('WAIT_CONFIRM')}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 py-3.5 font-bold text-white shadow-md hover:bg-emerald-700 active:scale-[0.98] transition cursor-pointer"
             >
               <CheckCircle2 className="h-5 w-5" />
               <span>Selesaikan Pekerjaan</span>
             </button>
+          ) : jobDetail?.status === 'WAIT_CONFIRM' || jobDetail?.status === 'WAITING_CONFIRMATION' ? (
+            <div className="p-3.5 text-center text-xs font-extrabold text-amber-800 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+              <span>Menunggu Konfirmasi Selesai dari Client</span>
+            </div>
           ) : jobDetail?.status === 'COMPLETED' ? (
-            <div className="p-3 text-center text-xs font-bold text-[#005B66] bg-[#E6F4F1] rounded-full">
-              Pekerjaan Ini telah Selesai
+            <div className="p-3.5 text-center text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-full flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Pekerjaan Ini telah Selesai & Lunas</span>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => handleUpdateStatus('REJECTED')}
-                className="flex items-center justify-center gap-1.5 rounded-full border border-red-200 bg-red-50 py-3 font-bold text-red-600 hover:bg-red-100 active:scale-[0.98] transition"
+                className="flex items-center justify-center gap-1.5 rounded-full border border-red-200 bg-red-50 py-3 font-bold text-red-600 hover:bg-red-100 active:scale-[0.98] transition cursor-pointer"
               >
                 <XCircle className="h-4 w-4" />
                 <span>Tolak</span>
@@ -267,7 +292,7 @@ export default function WorkerDetailPekerjaan() {
               <button
                 type="button"
                 onClick={() => handleUpdateStatus('ACCEPTED')}
-                className="flex items-center justify-center gap-1.5 rounded-full bg-[#007088] py-3 font-bold text-white shadow-md hover:bg-[#005B66] active:scale-[0.98] transition"
+                className="flex items-center justify-center gap-1.5 rounded-full bg-[#007088] py-3 font-bold text-white shadow-md hover:bg-[#005B66] active:scale-[0.98] transition cursor-pointer"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Terima Pekerjaan</span>

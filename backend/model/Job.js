@@ -27,7 +27,7 @@ export default class Job extends Model {
       allowNull: true
     },
     status: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     rating: {
@@ -36,6 +36,18 @@ export default class Job extends Model {
     },
     comment: {
       type: DataTypes.TEXT,
+      allowNull: true
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    service: {
+      type: DataTypes.STRING(100),
       allowNull: true
     },
     WorkerID: {
@@ -67,9 +79,6 @@ export default class Job extends Model {
     tableName: 'job',
     schema: 'public',
     timestamps: false,
-    timestamp: true,
-    createdAt: 'createdAt',
-    updatedAt: false,
     indexes: [
       {
         name: "job_pkey",

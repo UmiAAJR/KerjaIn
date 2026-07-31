@@ -58,8 +58,22 @@ export default function WorkerProfile() {
     );
   }
 
-
-  const { name, email, phone, address, photo, hourlyRate } = profileData;
+  // ADAPTER DATA (Mengubah mockData / API response ke format UI)
+  const user = {
+    name: profileData?.name || "Nama Belum Diisi",
+    category: profileData?.categoryName || profileData?.skills?.[0]?.categoryName || profileData?.skills?.[0]?.Category?.name || "",
+    role: profileData?.skills?.[0]?.name || profileData?.skills?.[0]?.skillName || profileData?.role || "Pekerja Lepas",
+    skills: profileData?.skills || [],
+    email: profileData?.email || "-",
+    phone: profileData?.phone || "-",
+    bio: profileData?.bio || profileData?.description || "Belum ada deskripsi profil.",
+    avatar: profileData?.photo || profileData?.avatar || profileData?.User?.photo || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    stats: {
+      totalProjects: profileData?.jobsDone ?? profileData?.stats?.totalProjects ?? 0,
+      rating: profileData?.rating ?? profileData?.stats?.rating ?? 0
+    },
+    isVerified: profileData?.verified || profileData?.ktpStatus === 'Verified'
+  };
 
   return (
     <MobileLayout
@@ -141,6 +155,39 @@ export default function WorkerProfile() {
             <p className="text-xs text-gray-600 leading-relaxed">
               {profileData.bio}
             </p>
+          </div>
+
+          {/* 2.5 KARTU KATEGORI & KEAHLIAN */}
+          <div className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-800 font-semibold text-sm">
+                <Briefcase className="w-4 h-4 text-[#007088]" />
+                <span>Kategori & Keahlian</span>
+              </div>
+              {user.category && (
+                <span className="text-[10px] font-extrabold text-[#007088] bg-teal-50 px-2.5 py-1 rounded-full border border-teal-100">
+                  {user.category}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {user.skills && user.skills.length > 0 ? (
+                user.skills.map((sk, idx) => {
+                  const skillName = typeof sk === 'string' ? sk : (sk.name || sk.skillName);
+                  return (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 bg-[#007088]/10 text-[#007088] border border-[#007088]/20 rounded-full text-xs font-bold"
+                    >
+                      ✓ {skillName}
+                    </span>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-slate-400 italic">Belum ada keahlian dipilih</span>
+              )}
+            </div>
           </div>
 
           {/* 3. KARTU STATISTIK */}

@@ -157,13 +157,13 @@ const Login = () => {
                     </form>
 
                     {/* Divider */}
-                    <div className="flex items-center my-6">
+                    {/* <div className="flex items-center my-6">
                         <div className="flex-grow h-px bg-slate-100"></div>
                         <span className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                             Atau Lanjutkan Dengan
                         </span>
                         <div className="flex-grow h-px bg-slate-100"></div>
-                    </div>
+                    </div> */}
 
                     {/* Social Sign In */}
                     {/* <SocialButton provider="google" onClick={() => console.log('Google Auth Clicked')} /> */}

@@ -1,22 +1,46 @@
-import db from "../db/db.js";
-import initModels from "../model/init-models.js";
-
-const { Panic, User, Worker, Job } = initModels(db)
+import { Panic, User, Worker, Job } from "../model/models.js";
+import { canAccessJob, isAdmin } from '../middleware/AccessControl.js';
 
 export const getPanic = async (req, res) => {
     try {
-        const perPage = req.query.perPage ?? 10
+        const { page: _page, perPage: _perPage, ...whereClause } = req.query;
+        const perPage = parseInt(_perPage) || 10;
+        const page = parseInt(_page) || 1;
+        const offset = (page - 1) * perPage;
         const totalData = await Panic.count()
-        let page = req.query.page ?? 1
-        let offset = (page - 1) * perPage
 
         const panic = await Panic.findAll({
             where: {
-                ...req.query
+                ...whereClause
             },
 
             limit: perPage,
             offset: offset,
+
+            include: [
+                {
+                    model: Job,
+                    as: "Job",
+                    include: [
+                        {
+                            model: User,
+                            as: "Client",
+                            attributes: { exclude: ["password"] }
+                        },
+                        {
+                            model: Worker,
+                            as: "Worker",
+                            include: [
+                                {
+                                    model: User,
+                                    as: "User",
+                                    attributes: { exclude: ["password"] }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
 
             order: [
                 ["createdAt", "DESC"]
@@ -46,7 +70,7 @@ export const getDetailPanic = async (req, res) => {
                     include: [
                         {
                             model: User,
-                            as: "User",
+                            as: "Client",
                             attributes: {
                                 exclude: ["password"]
                             }
@@ -75,6 +99,10 @@ export const getDetailPanic = async (req, res) => {
                 PanicID: req.params.id
             }
         })
+        if (!panic) return res.status(404).json({ message: "Data panic tidak ditemukan" });
+        if (!isAdmin(req) && !(await canAccessJob(req, panic.Job))) {
+            return res.status(403).json({ message: "Akses ditolak" });
+        }
 
         return res.json({
             message: "Berhasil mendapatkan data",
@@ -89,7 +117,15 @@ export const getDetailPanic = async (req, res) => {
 
 export const createPanic = async (req, res) => {
     try {
-        await Panic.create(req.body)
+        const job = await Job.findByPk(req.body.JobID);
+        if (!job) return res.status(404).json({ message: "Pekerjaan tidak ditemukan" });
+        if (!(await canAccessJob(req, job))) return res.status(403).json({ message: "Akses ditolak" });
+        await Panic.create({
+            JobID: job.JobID,
+            longitude: req.body.longitude,
+            latitude: req.body.latitude,
+            status: 'active'
+        })
 
         return res.json({
             message: "Berhasil membuat data"
@@ -103,14 +139,13 @@ export const createPanic = async (req, res) => {
 
 export const updatePanic = async (req, res) => {
     try {
-        await Panic.update(req.body, {
-            where: {
-                PanicID: req.params.id
-            }
-        })
+        const panic = await Panic.findByPk(req.params.id, { include: [{ model: Job, as: 'Job' }] });
+        if (!panic) return res.status(404).json({ message: "Data panic tidak ditemukan" });
+        if (!isAdmin(req) && !(await canAccessJob(req, panic.Job))) return res.status(403).json({ message: "Akses ditolak" });
+        await panic.update({ status: isAdmin(req) ? req.body.status : panic.status })
 
         return res.json({
-            message: "Berhasil memperbarui kategori"
+            message: "Berhasil memperbarui data panic"
         })
     } catch (error) {
         return res.status(500).json({
@@ -121,11 +156,10 @@ export const updatePanic = async (req, res) => {
 
 export const deletePanic = async (req, res) => {
     try {
-        await Panic.destroy({
-            where: {
-                PanicID: req.params.id
-            }
-        })
+        const panic = await Panic.findByPk(req.params.id, { include: [{ model: Job, as: 'Job' }] });
+        if (!panic) return res.status(404).json({ message: "Data panic tidak ditemukan" });
+        if (!isAdmin(req)) return res.status(403).json({ message: "Akses ditolak" });
+        await panic.destroy()
 
         return res.json({
             message: "Berhasil menghapus data"

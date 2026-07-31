@@ -168,7 +168,7 @@ const ClientDashboard = () => {
                                     <div className="flex gap-4">
                                         <div className="relative shrink-0">
                                             <img
-                                                src={worker.photo}
+                                                src={worker.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                                                 alt={worker.name}
                                                 className="w-16 h-16 rounded-[20px] object-cover border border-slate-100"
                                             />

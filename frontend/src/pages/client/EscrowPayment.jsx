@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientApi } from '../../services/api';
+import { showAlert } from '../../utils/swal';
 import MobileLayout from '../../components/layout/MobileLayout';
-import { ChevronLeft, QrCode, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  QrCode, 
+  AlertTriangle, 
+  ShieldCheck, 
+  CheckCircle2, 
+  CreditCard, 
+  ExternalLink, 
+  Loader2,
+  Sparkles,
+  Info
+} from 'lucide-react';
 
 export default function EscrowPayment() {
   const { jobId } = useParams();
@@ -10,6 +22,7 @@ export default function EscrowPayment() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [snapLoading, setSnapLoading] = useState(false);
   const [paid, setPaid] = useState(false);
 
   useEffect(() => {
@@ -19,15 +32,14 @@ export default function EscrowPayment() {
         const tracking = await clientApi.getJobTracking(jobId);
         // Find in history to get full pricing details
         const historyList = await clientApi.getHistory();
-        const found = historyList.find(j => j.jobId === jobId);
+        const found = historyList.find(j => j.jobId === jobId || j.JobID === jobId);
         if (found) {
           setJob(found);
         } else {
-          // Fallback if not found in history yet
           setJob({
-            jobId: tracking.jobId,
-            service: tracking.worker.workerName,
-            price: tracking.smartWage.recommendedPrice,
+            jobId: tracking.jobId || jobId,
+            service: tracking.service || tracking.worker?.workerName || 'Layanan KerjaIn',
+            price: tracking.price || tracking.smartWage?.recommendedPrice || 50000,
             status: tracking.status
           });
         }
@@ -40,20 +52,42 @@ export default function EscrowPayment() {
     fetchJob();
   }, [jobId]);
 
+  // Dynamically load Midtrans Snap JS SDK (Sandbox Mode)
+  useEffect(() => {
+    const snapUrl = "https://app.sandbox.midtrans.com/snap/snap.js";
+    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "SB-Mid-client-dummy";
+    
+    let script = document.querySelector(`script[src="${snapUrl}"]`);
+    if (!script) {
+      script = document.createElement("script");
+      script.src = snapUrl;
+      script.setAttribute("data-client-key", clientKey);
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // MIDTRANS SNAP PAYMENT (DISABLED FOR NOW)
+  const handleMidtransSnapPayment = () => {
+    showAlert('Masih Dalam Pengembangan', 'info', 'Fitur pembayaran otomatis via Midtrans sedang disiapkan.');
+  };
+
+  // SIMULATED INSTANT PAYMENT (BYPASS)
   const handleSimulatePayment = async () => {
     setPaying(true);
     try {
-      await clientApi.createEscrowPayment(job.jobId, job.price, 'QRIS');
+      await clientApi.createEscrowPayment(job.jobId, job.price, 'QRIS_SIMULATED');
       setPaid(true);
       setTimeout(() => {
         navigate(`/client/tracking/${job.jobId}`);
       }, 2000);
     } catch (err) {
-      alert('Pembayaran gagal: ' + err.message);
+      showAlert('Pembayaran Gagal', 'error', err.message);
     } finally {
       setPaying(false);
     }
   };
+
+
 
   if (loading) {
     return (
@@ -72,7 +106,7 @@ export default function EscrowPayment() {
           <p className="text-sm font-bold text-slate-500">Pekerjaan tidak ditemukan.</p>
           <button
             onClick={() => navigate('/client/dashboard')}
-            className="px-5 py-2.5 bg-[#046c7a] text-white text-xs font-bold rounded-xl"
+            className="px-5 py-2.5 bg-[#046c7a] text-white text-xs font-bold rounded-xl cursor-pointer"
           >
             Kembali
           </button>
@@ -85,7 +119,7 @@ export default function EscrowPayment() {
     <MobileLayout
       topNavProps={{
         variant: "brand",
-        brandName: "Pembayaran QRIS",
+        brandName: "Pembayaran Escrow",
         hasNotification: false,
       }}
       bottomNavProps={{
@@ -96,13 +130,18 @@ export default function EscrowPayment() {
         <div className="px-5 pt-4 pb-8 space-y-4">
           
           {/* Back button */}
-          <button
-            onClick={() => navigate(`/client/dashboard`)}
-            className="flex items-center gap-1.5 text-xs font-extrabold text-[#046c7a] hover:underline cursor-pointer"
-          >
-            <ChevronLeft size={16} strokeWidth={2.5} />
-            <span>Kembali ke Dasbor</span>
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate(`/client/dashboard`)}
+              className="flex items-center gap-1.5 text-xs font-extrabold text-[#046c7a] hover:underline cursor-pointer"
+            >
+              <ChevronLeft size={16} strokeWidth={2.5} />
+              <span>Kembali ke Dasbor</span>
+            </button>
+            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+              SANDBOX TEST MODE
+            </span>
+          </div>
 
           {paid ? (
             <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-md text-center space-y-4 py-12">
@@ -118,7 +157,7 @@ export default function EscrowPayment() {
             <div className="space-y-4">
               
               {/* Payment Details Box */}
-              <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3.5">
+              <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-xs space-y-3.5">
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-widest">Layanan Jasa</span>
@@ -136,55 +175,42 @@ export default function EscrowPayment() {
 
                 <div className="flex items-center gap-2.5 text-xs font-semibold text-slate-500">
                   <ShieldCheck size={16} className="text-[#046c7a] shrink-0" />
-                  <span>Escrow Aman: Uang Anda hanya akan dilepaskan ke pekerja setelah pekerjaan terkonfirmasi selesai.</span>
+                  <span>Escrow Aman: Dana hanya akan dilepaskan ke pekerja setelah pekerjaan selesai & terkonfirmasi.</span>
                 </div>
               </div>
 
-              {/* QRIS Code Box */}
-              <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-4">
-                <div className="flex items-center gap-1.5 justify-center">
-                  <span className="text-lg font-black text-slate-800 tracking-tight font-heading">QRIS</span>
-                  <span className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-md border border-cyan-100">DYNAMIC</span>
-                </div>
-
-                <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Pindai kode QR di bawah ini untuk membayar</p>
-                
-                {/* Simulated QR Image */}
-                <div className="p-3 bg-white border border-slate-200 rounded-2xl shadow-xs relative">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=kerjain-escrow-payment-${job.jobId}`}
-                    alt="QRIS Code"
-                    className="w-48 h-48 rounded-lg"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/5 opacity-0 hover:opacity-100 transition-opacity">
-                    <QrCode size={36} className="text-[#046c7a]" />
+              {/* MIDTRANS PAYMENT (DISABLED / IN DEVELOPMENT) */}
+              <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-slate-100 rounded-xl text-slate-500">
+                    <CreditCard size={20} />
                   </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-left space-y-2">
-                  <div className="flex gap-2 text-slate-500 text-xs font-semibold leading-relaxed">
-                    <span className="text-[#046c7a] font-bold">1.</span>
-                    <span>Buka aplikasi dompet digital (GoPay, OVO, Dana) atau Mobile Banking.</span>
-                  </div>
-                  <div className="flex gap-2 text-slate-500 text-xs font-semibold leading-relaxed">
-                    <span className="text-[#046c7a] font-bold">2.</span>
-                    <span>Pindai QR code di atas, periksa nama merchant **KerjaIn Escrow**.</span>
-                  </div>
-                  <div className="flex gap-2 text-slate-500 text-xs font-semibold leading-relaxed">
-                    <span className="text-[#046c7a] font-bold">3.</span>
-                    <span>Masukkan PIN pembayaran Anda. Transaksi Anda akan otomatis terdeteksi.</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Simulation Trigger (For Offline Test Mode) */}
-              <div className="bg-amber-50 rounded-3xl p-5 border border-amber-100/70 space-y-3">
-                <div className="flex gap-2.5 items-start">
-                  <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-xs font-black text-amber-800 tracking-tight">Simulasi Pengujian Offline</h4>
-                    <p className="text-[10px] text-amber-700 font-semibold leading-relaxed mt-1">
-                      Gunakan tombol di bawah untuk menyimulasikan notifikasi sukses pembayaran dari webhook Midtrans ke backend KerjaIn.
+                    <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <span>Midtrans Gateway</span>
+                      <span className="bg-amber-100 text-amber-800 text-[9px] px-2 py-0.5 rounded-md font-bold">DALAM PENGEMBANGAN</span>
+                    </h3>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">QRIS, Virtual Account, E-Wallet</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleMidtransSnapPayment}
+                  className="w-full py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-black rounded-2xl text-center shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                >
+                  <Sparkles size={16} />
+                  <span>Bayar via Midtrans Snap</span>
+                </button>
+              </div>
+
+              {/* BYPASS PAYMENT (FAST FORWARD / SIMULATOR) */}
+              <div className="bg-emerald-50 rounded-3xl p-5 border border-emerald-100 shadow-xs space-y-3">
+                <div className="flex gap-2.5 items-start">
+                  <ShieldCheck size={20} className="text-[#046c7a] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-black text-emerald-900 tracking-tight">Bypass Pembayaran Escrow</h4>
+                    <p className="text-[10px] text-emerald-700 font-semibold leading-relaxed mt-1">
+                      Klik tombol di bawah untuk menyetujui pembayaran escrow secara langsung (Bypass) dan melanjutkan ke pelacakan pekerjaan.
                     </p>
                   </div>
                 </div>
@@ -192,11 +218,12 @@ export default function EscrowPayment() {
                 <button
                   onClick={handleSimulatePayment}
                   disabled={paying}
-                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white text-xs font-black rounded-2xl text-center shadow-md shadow-amber-100 active:scale-[0.99] transition-all cursor-pointer"
+                  className="w-full py-3.5 bg-[#046c7a] hover:bg-[#035f6b] disabled:bg-slate-300 text-white text-xs font-black rounded-2xl text-center shadow-md active:scale-[0.99] transition-all cursor-pointer"
                 >
-                  {paying ? 'Memproses Simulasi...' : 'Bayar Menggunakan QRIS (Simulasi)'}
+                  {paying ? 'Memproses Pembayaran...' : 'Bypass & Bayar Instan'}
                 </button>
               </div>
+
 
             </div>
           )}

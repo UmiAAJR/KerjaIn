@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
+import { showAlert, showConfirm } from '../../utils/swal';
 import { 
   AlertOctagon, 
   Phone, 
@@ -31,8 +32,8 @@ const AdminPanic = () => {
       
       // If we already have a selected alert, refresh its details too
       if (selectedAlert) {
-        const jobId = selectedAlert.JobID || selectedAlert.jobId;
-        const details = await adminApi.getPanicDetail(jobId);
+        const targetPanicId = selectedAlert.PanicID || selectedAlert.id;
+        const details = await adminApi.getPanicDetail(targetPanicId);
         setSelectedDetails(details);
       }
     } catch (err) {
@@ -44,31 +45,39 @@ const AdminPanic = () => {
 
   useEffect(() => {
     fetchAlerts();
+    const interval = setInterval(fetchAlerts, 10000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleSelectAlert = async (alert) => {
+  const handleSelectAlert = async (alertItem) => {
     try {
-      setSelectedAlert(alert);
+      setSelectedAlert(alertItem);
       setSelectedDetails(null);
-      const jobId = alert.JobID || alert.jobId;
-      const details = await adminApi.getPanicDetail(jobId);
+      const targetPanicId = alertItem.PanicID || alertItem.id;
+      const details = await adminApi.getPanicDetail(targetPanicId);
       setSelectedDetails(details);
     } catch (err) {
-      alert("Gagal memuat detail emergency: " + err.message);
+      showAlert("Gagal", "error", "Gagal memuat detail emergency: " + err.message);
     }
   };
 
-  const handleResolveAlert = async (jobId) => {
-    if (!window.confirm("Apakah Anda yakin situasi darurat ini telah teratasi? Peringatan panic akan dinonaktifkan.")) return;
+  const handleResolveAlert = async (panicId) => {
+    const isConfirmed = await showConfirm(
+      "Konfirmasi Resolusi Darurat",
+      "Apakah Anda yakin situasi darurat ini telah teratasi? Peringatan panic akan dinonaktifkan.",
+      "Ya, Selesaikan",
+      "warning"
+    );
+    if (!isConfirmed) return;
     try {
       setActionLoading(true);
-      await adminApi.resolvePanic(jobId);
-      alert("Situasi darurat berhasil ditandai selesai.");
+      await adminApi.resolvePanic(panicId);
+      showAlert("Situasi Teratasi", "success", "Situasi darurat berhasil ditandai selesai.");
       setSelectedAlert(null);
       setSelectedDetails(null);
       fetchAlerts();
     } catch (err) {
-      alert("Gagal meresolusi peringatan: " + err.message);
+      showAlert("Gagal", "error", "Gagal meresolusi peringatan: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -91,6 +100,24 @@ const AdminPanic = () => {
     <AdminLayout activeMenu="panic">
       <div className="space-y-6 select-none">
         
+        {/* Notice Banner Dalam Pengembangan */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 text-amber-900 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-xl font-bold shrink-0">
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-sm text-amber-900 font-heading uppercase tracking-wider">MODUL DALAM PENGEMBANGAN</span>
+                <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Development Preview</span>
+              </div>
+              <p className="text-xs font-semibold text-amber-800/90 mt-0.5 leading-relaxed">
+                Fitur Pusat Kontrol SOS Panic ini sedang disiapkan untuk rilis versi berikutnya. Seluruh tampilan dan interaksi di bawah diperlihatkan sebagai pratinjau antarmuka aktif.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Panic Alerts Dashboard Banner */}
         <div className="bg-rose-900 border border-rose-800 rounded-3xl p-6 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
           <div className="absolute right-0 top-0 opacity-10 transform translate-x-12 -translate-y-6">
@@ -281,7 +308,7 @@ const AdminPanic = () => {
 
                   {selectedDetails.status === 'Active' && (
                     <button
-                      onClick={() => handleResolveAlert(selectedDetails.JobID || selectedDetails.job?.jobId)}
+                      onClick={() => handleResolveAlert(selectedDetails.PanicID || selectedAlert?.PanicID || selectedAlert?.id)}
                       disabled={actionLoading}
                       className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl border border-emerald-400/20 shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
                     >

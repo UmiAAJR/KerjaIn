@@ -6,6 +6,8 @@ import {
   INITIAL_NOTIFICATIONS 
 } from './mockData';
 
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
 const initDb = () => {
     if (!localStorage.getItem('ki_categories')) {
         localStorage.setItem('ki_categories', JSON.stringify(INITIAL_CATEGORIES));
@@ -27,7 +29,9 @@ const initDb = () => {
     }
 };
 
-initDb();
+if (USE_MOCK) {
+    initDb();
+}
 
 export { authApi } from './authService';
 export { clientApi } from './clientService';

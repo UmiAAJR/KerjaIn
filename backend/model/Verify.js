@@ -11,15 +11,15 @@ export default class Verify extends Model {
       primaryKey: true
     },
     ktpPhoto: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT,
       allowNull: true
     },
     selfiePhoto: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT,
       allowNull: true
     },
     status: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     submittedAt: {
@@ -39,9 +39,6 @@ export default class Verify extends Model {
     tableName: 'verify',
     schema: 'public',
     timestamps: false,
-    timestamp: true,
-    createdAt: 'createdAt',
-    updatedAt: false,
     indexes: [
       {
         name: "verify_pkey",

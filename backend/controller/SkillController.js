@@ -1,9 +1,5 @@
-import db from "../db/db.js";
-import initModels from "../model/init-models.js";
+import { Skill } from "../model/models.js";
 
-
-const model = initModels(db)
-const Skill = model.Skill
 
 export const getSkill =  async(req, res) => {
     try {
@@ -66,7 +62,7 @@ export const updateSkill = async(req, res) => {
         })
 
         return res.json({
-            message: "Berhasil memperbarui kategori"
+            message: "Berhasil memperbarui skill"
         })
     } catch (error) {
         return res.status(500).json({

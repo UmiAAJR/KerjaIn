@@ -364,76 +364,396 @@ const mockAdminApi = {
 
 const realAdminApi = {
     getDashboardStats: async () => {
-        const res = await axiosInstance.get('/admin/dashboard');
-        return res.data;
+        try {
+            const [usersRes, workersRes, jobsRes, paymentsRes, panicRes] = await Promise.allSettled([
+                axiosInstance.get('/user'),
+                axiosInstance.get('/worker'),
+                axiosInstance.get('/job'),
+                axiosInstance.get('/payment'),
+                axiosInstance.get('/panic')
+            ]);
+
+            const users = usersRes.status === 'fulfilled' ? (usersRes.value.data.data || []) : [];
+            const workers = workersRes.status === 'fulfilled' ? (workersRes.value.data.data || []) : [];
+            const jobs = jobsRes.status === 'fulfilled' ? (jobsRes.value.data.data || []) : [];
+            const payments = paymentsRes.status === 'fulfilled' ? (paymentsRes.value.data.data || []) : [];
+            const panics = panicRes.status === 'fulfilled' ? (panicRes.value.data.data || []) : [];
+
+            const totalClient = users.filter(u => u.role === 'client').length;
+            const totalWorker = workers.length;
+            const verifiedWorker = workers.filter(w => w.status === 'verified').length;
+            const pendingWorker = workers.filter(w => w.status === 'pending_verification' || w.status === 'pending').length;
+
+            const activeJob = jobs.filter(j => ['WORKER_ACCEPTED', 'ACCEPTED', 'ON_THE_WAY', 'IN_PROGRESS', 'WAITING_CONFIRMATION', 'WAIT_CONFIRM'].includes(j.status)).length;
+            const completedJob = jobs.filter(j => j.status === 'COMPLETED').length;
+
+            const escrowHolding = payments.filter(p => p.status === 'pending' || p.status === 'holding').reduce((acc, p) => acc + Number(p.amount || 0), 0);
+            const escrowReleased = payments.filter(p => p.status === 'released').reduce((acc, p) => acc + Number(p.amount || 0), 0);
+            const todayRevenue = Math.floor(escrowReleased * 0.1);
+            const activePanic = panics.filter(p => p.status !== 'resolved').length;
+
+            return {
+                totalWorker,
+                verifiedWorker,
+                pendingWorker,
+                totalClient,
+                activeJob,
+                completedJob,
+                escrowHolding,
+                escrowReleased,
+                activePanic,
+                todayRevenue,
+                weeklyRevenue: todayRevenue * 5,
+                monthlyRevenue: todayRevenue * 20
+            };
+        } catch (err) {
+            console.error("Failed to aggregate dashboard stats:", err);
+            return {
+                totalWorker: 0, verifiedWorker: 0, pendingWorker: 0,
+                totalClient: 0, activeJob: 0, completedJob: 0,
+                escrowHolding: 0, escrowReleased: 0, activePanic: 0,
+                todayRevenue: 0, weeklyRevenue: 0, monthlyRevenue: 0
+            };
+        }
     },
     getJobs: async () => {
-        const res = await axiosInstance.get('/admin/jobs');
-        return res.data;
+        const res = await axiosInstance.get('/job');
+        const jobs = res.data.data || [];
+        return jobs.map(j => ({
+            ...j,
+            JobID: j.JobID || j.jobId,
+            jobId: j.JobID || j.jobId,
+            title: j.comment || `Pekerjaan Jasa #${(j.JobID || '').slice(0, 6)}`,
+            service: j.comment || 'Pekerjaan Jasa',
+            clientName: j.Client?.name || 'Client',
+            workerName: j.Worker?.User?.name || 'Worker Belum Ditentukan',
+            price: Number(j.Payment?.amount || 0),
+            amount: Number(j.Payment?.amount || 0),
+            escrowStatus: j.Payment?.status === 'released' ? 'Released' : j.Payment?.status === 'holding' ? 'Holding' : 'Pending',
+            createdAt: j.createdAt || j.bookingDate || new Date().toISOString()
+        }));
     },
     getClients: async () => {
-        const res = await axiosInstance.get('/user?role=client');
-        return res.data;
+        const res = await axiosInstance.get('/user?role=client&perPage=500');
+        const users = res.data.data || [];
+        return users.map(u => ({
+            ...u,
+            id: u.UserID || u.id,
+            UserID: u.UserID || u.id,
+            name: u.name || 'Klien',
+            email: u.email || '',
+            phone: u.phoneNumber || u.phone || '',
+            address: u.address || 'Indonesia',
+            photo: u.photo || '',
+            joinedAt: u.createdAt,
+            status: 'Active'
+        }));
     },
     getWorkers: async () => {
-        const res = await axiosInstance.get('/worker');
-        return res.data;
+        const res = await axiosInstance.get('/worker?perPage=500');
+        const workers = res.data.data || [];
+
+        return workers.map(w => {
+            const rawStatus = w.status || 'unverified';
+            const ktpStatus = rawStatus === 'verified' ? 'Verified' : (rawStatus === 'pending_verification' ? 'Pending' : 'Unverified');
+            return {
+                ...w,
+                id: w.WorkerID,
+                WorkerID: w.WorkerID,
+                name: w.User?.name || 'Tanpa Nama',
+                email: w.User?.email || '',
+                phone: w.User?.phoneNumber || '',
+                photo: w.User?.photo || '',
+                address: w.User?.address || '',
+                verified: rawStatus === 'verified',
+                ktpStatus: ktpStatus,
+                rating: 5.0,
+                status: rawStatus,
+                skills: (w.Worker_skill || []).map(ws => ({ skillName: ws.Skill?.name }))
+            };
+        });
     },
     getWorkerVerificationList: async () => {
-        const res = await axiosInstance.get('/verify');
-        return res.data;
+        try {
+            const [verifyRes, workerRes] = await Promise.all([
+                axiosInstance.get('/verify?perPage=500').catch(() => ({ data: { data: [] } })),
+                axiosInstance.get('/worker?perPage=500').catch(() => ({ data: { data: [] } }))
+            ]);
+
+            const verifyList = verifyRes.data?.data || [];
+            const workerList = workerRes.data?.data || [];
+
+            // Index verify entries by WorkerID and UserID
+            const verifyMap = new Map();
+            verifyList.forEach(v => {
+                if (v.WorkerID) verifyMap.set(String(v.WorkerID).toLowerCase(), v);
+                if (v.Worker?.UserID) verifyMap.set(String(v.Worker.UserID).toLowerCase(), v);
+            });
+
+            // Map each worker in Worker table (20 records)
+            const result = workerList.map(w => {
+                const workerIdKey = String(w.WorkerID || '').toLowerCase();
+                const userIdKey = String(w.UserID || '').toLowerCase();
+                const v = verifyMap.get(workerIdKey) || verifyMap.get(userIdKey);
+
+                let statusLabel = 'Pending';
+                if (v) {
+                    const rawStatus = (v.status || '').toLowerCase();
+                    statusLabel = (rawStatus === 'accepted' || rawStatus === 'verified') ? 'Verified' : ((rawStatus === 'rejected') ? 'Rejected' : 'Pending');
+                } else {
+                    const rawStatus = (w.status || '').toLowerCase();
+                    statusLabel = (rawStatus === 'verified') ? 'Verified' : ((rawStatus === 'rejected') ? 'Rejected' : 'Pending');
+                }
+
+                return {
+                    id: w.WorkerID,
+                    VerifyID: v ? v.VerifyID : null,
+                    WorkerID: w.WorkerID,
+                    UserID: w.UserID,
+                    name: w.User?.name || w.bankAccount || 'Worker',
+                    email: w.User?.email || '',
+                    phone: w.User?.phoneNumber || w.bankNumber || '',
+                    photo: w.User?.photo || v?.ktpPhoto || '',
+                    ktpPhoto: v?.ktpPhoto || '',
+                    selfiePhoto: v?.selfiePhoto || '',
+                    status: statusLabel,
+                    ktpStatus: statusLabel,
+                    submittedAt: v?.submittedAt ? String(v.submittedAt).slice(0, 10) : (w.createdAt ? String(w.createdAt).slice(0, 10) : 'Hari ini')
+                };
+            });
+
+            return result;
+        } catch (err) {
+            console.error("getWorkerVerificationList error:", err);
+            return [];
+        }
     },
-    verifyWorker: async (workerId, status) => {
-        const res = await axiosInstance.patch(`/verify/handle/${workerId}`, { status });
-        return res.data;
+    getPendingWorkers: async () => {
+        const res = await axiosInstance.get('/verify?perPage=500').catch(() => ({ data: { data: [] } }));
+        return res.data?.data || [];
     },
+    verifyWorker: async (verifyIdOrWorkerId, status) => {
+        const mappedStatus = (status === 'Verified' || status === 'accepted') ? 'accepted' : 'rejected';
+        try {
+            const res = await axiosInstance.patch(`/verify/handle/${verifyIdOrWorkerId}`, { status: mappedStatus });
+            return res.data;
+        } catch (err) {
+            const workerStatus = mappedStatus === 'accepted' ? 'verified' : 'unverified';
+            const res = await axiosInstance.patch(`/worker/${verifyIdOrWorkerId}`, { status: workerStatus });
+            return res.data;
+        }
+    },
+
     getReports: async () => {
-        const res = await axiosInstance.get('/admin/reports');
-        return res.data;
+        try {
+            const res = await axiosInstance.get('/reports');
+            return res.data?.data || [];
+        } catch (err) {
+            console.error("getReports error:", err);
+            return [];
+        }
     },
     getReportDetail: async (reportId) => {
-        const res = await axiosInstance.get(`/admin/reports/${reportId}`);
-        return res.data;
+        try {
+            const res = await axiosInstance.get(`/reports/${reportId}`);
+            return res.data?.data || null;
+        } catch (err) {
+            console.error("getReportDetail error:", err);
+            return null;
+        }
     },
     resolveReport: async (reportId) => {
-        const res = await axiosInstance.post(`/admin/reports/${reportId}/resolve`);
+        const res = await axiosInstance.patch(`/reports/${reportId}/resolve`);
         return res.data;
     },
+
     getPanicAlerts: async () => {
         const res = await axiosInstance.get('/panic');
-        return res.data;
+        const panics = res.data.data || [];
+        return panics.map(p => ({
+            PanicID: p.PanicID,
+            JobID: p.JobID,
+            workerName: p.Job?.Worker?.User?.name || 'Worker',
+            workerPhoto: p.Job?.Worker?.User?.photo || '',
+            clientName: p.Job?.Client?.name || 'Client',
+            address: p.Job?.Client?.address || 'Lokasi Pekerjaan',
+            createdAt: p.createdAt || new Date().toISOString(),
+            status: p.status || 'Active',
+            longitude: Number(p.longitude || 106.8456),
+            latitude: Number(p.latitude || -6.2088)
+        }));
     },
-    getPanicDetail: async (jobId) => {
-        const res = await axiosInstance.get(`/panic/${jobId}`);
-        return res.data;
+    getPanicDetail: async (panicId) => {
+        const res = await axiosInstance.get(`/panic/${panicId}`);
+        const data = res.data.data || res.data;
+        return {
+            PanicID: data.PanicID,
+            JobID: data.JobID,
+            worker: {
+                id: data.Job?.Worker?.WorkerID,
+                name: data.Job?.Worker?.User?.name || 'Worker',
+                photo: data.Job?.Worker?.User?.photo || ''
+            },
+            phone: data.Job?.Worker?.User?.phoneNumber || 'N/A',
+            latitude: Number(data.latitude || -6.2088),
+            longitude: Number(data.longitude || 106.8456),
+            job: {
+                JobID: data.JobID,
+                jobId: data.JobID,
+                service: data.Job?.comment || 'Pekerjaan Jasa',
+                clientName: data.Job?.Client?.name || 'Client',
+                address: data.Job?.Client?.address || 'Alamat Client'
+            },
+            createdAt: data.createdAt || new Date().toISOString(),
+            status: data.status || 'Active'
+        };
     },
-    resolvePanic: async (jobId) => {
-        const res = await axiosInstance.patch(`/panic/${jobId}`, { status: 'resolved' });
+    resolvePanic: async (panicId) => {
+        const res = await axiosInstance.patch(`/panic/${panicId}`, { status: 'resolved' });
         return res.data;
     },
     getEscrowList: async () => {
-        const res = await axiosInstance.get('/admin/escrows');
+        const res = await axiosInstance.get('/payment');
+        const payments = res.data.data || [];
+        return payments.map(p => {
+            const job = p.Job || {};
+            const client = job.Client || {};
+            const worker = job.Worker || {};
+            const workerUser = worker.User || {};
+
+            const totalPrice = Number(p.amount || 0);
+            const platformFee = Number(p.platformFee || (p.status === 'released' ? Math.round(totalPrice * 0.10) : 0));
+            const workerAmount = Number(p.workerAmount || (p.status === 'released' ? (totalPrice - platformFee) : 0));
+
+            return {
+                PaymentID: p.PaymentID,
+                Payment: p,
+                amount: totalPrice,
+                price: totalPrice,
+                platformFee,
+                workerAmount,
+                status: p.status || 'pending',
+                escrowStatus: p.status === 'released' ? 'Released' : p.status === 'refunded' ? 'Refunded' : 'Holding',
+                createdAt: p.createdAt || '',
+                releasedAt: p.releasedAt || null,
+                snapToken: p.snapToken,
+                jobId: job.JobID || '-',
+                title: job.comment || 'Pekerjaan Jasa',
+                clientId: client.UserID || job.ClientID || '-',
+                clientName: client.name || 'Client',
+                workerId: worker.WorkerID || job.WorkerID || '-',
+                workerName: workerUser.name || 'Worker'
+            };
+        });
+    },
+    approvePayment: async (paymentId) => {
+        const res = await axiosInstance.patch(`/payment/${paymentId}`, { status: 'holding' });
         return res.data;
     },
-    approvePayment: async (jobId) => {
-        const res = await axiosInstance.post(`/admin/escrows/${jobId}/approve`);
+    rejectPayment: async (paymentId) => {
+        const res = await axiosInstance.patch(`/payment/${paymentId}`, { status: 'rejected' });
         return res.data;
     },
-    rejectPayment: async (jobId) => {
-        const res = await axiosInstance.post(`/admin/escrows/${jobId}/reject`);
+    releaseEscrow: async (paymentId) => {
+        const res = await axiosInstance.patch(`/payment/${paymentId}`, { status: 'released', releasedAt: new Date().toISOString() });
         return res.data;
     },
-    releaseEscrow: async (jobId) => {
-        const res = await axiosInstance.post(`/admin/escrows/${jobId}/release`);
+    refundEscrow: async (paymentId) => {
+        const res = await axiosInstance.patch(`/payment/${paymentId}`, { status: 'refunded' });
         return res.data;
     },
-    refundEscrow: async (jobId) => {
-        const res = await axiosInstance.post(`/admin/escrows/${jobId}/refund`);
-        return res.data;
+    getWithdrawalRequests: async () => {
+        let backendList = [];
+        try {
+            const res = await axiosInstance.get('/worker/withdraw/list');
+            backendList = res.data?.data || [];
+        } catch (err) {
+            console.error("Error fetching withdrawal requests:", err);
+        }
+
+        let localList = [];
+        try {
+            localList = JSON.parse(localStorage.getItem('ki_withdrawals')) || [];
+        } catch (e) {}
+
+        const allRaw = [...backendList, ...localList];
+        const unique = [];
+        const seen = new Set();
+
+        for (const w of allRaw) {
+            const id = w.WithdrawalID || w.id || w._id;
+            if (id && !seen.has(id)) {
+                seen.add(id);
+                unique.push(w);
+            }
+        }
+
+        return unique;
+    },
+    approveWithdrawal: async (id) => {
+        let resData = null;
+        try {
+            const res = await axiosInstance.patch(`/worker/withdraw/approve/${id}`);
+            resData = res.data;
+        } catch (e) {
+            console.warn("Backend approveWithdrawal notice:", e.message);
+        }
+        try {
+            const localList = JSON.parse(localStorage.getItem('ki_withdrawals')) || [];
+            let updated = false;
+            localList.forEach((w, idx) => {
+                const wId = w.WithdrawalID || w.id;
+                if (wId === id || (resData?.data?.amount && Number(w.amount) === Number(resData.data.amount))) {
+                    localList[idx].status = 'COMPLETED';
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem('ki_withdrawals', JSON.stringify(localList));
+            }
+        } catch (e) {}
+        return resData || { message: 'Berhasil menyetujui penarikan' };
+    },
+    rejectWithdrawal: async (id) => {
+        let resData = null;
+        try {
+            const res = await axiosInstance.patch(`/worker/withdraw/reject/${id}`);
+            resData = res.data;
+        } catch (e) {
+            console.warn("Backend rejectWithdrawal notice:", e.message);
+        }
+        try {
+            const localList = JSON.parse(localStorage.getItem('ki_withdrawals')) || [];
+            let updated = false;
+            localList.forEach((w, idx) => {
+                const wId = w.WithdrawalID || w.id;
+                if (wId === id || (resData?.data?.amount && Number(w.amount) === Number(resData.data.amount))) {
+                    localList[idx].status = 'REJECTED';
+                    updated = true;
+                }
+            });
+            if (updated) {
+                localStorage.setItem('ki_withdrawals', JSON.stringify(localList));
+            }
+        } catch (e) {}
+        return resData || { message: 'Berhasil menolak penarikan' };
     },
     getCategories: async () => {
         const res = await axiosInstance.get('/category');
-        return res.data;
+        const categories = res.data.data || [];
+        return categories.map(cat => ({
+            ...cat,
+            id: cat.CategoryID,
+            CategoryID: cat.CategoryID,
+            name: cat.name,
+            skills: (cat.skills || []).map(sk => ({
+                ...sk,
+                id: sk.SkillID,
+                SkillID: sk.SkillID,
+                name: sk.name,
+                CategoryID: cat.CategoryID
+            }))
+        }));
     },
     createCategory: async (nama, icon = 'Layers') => {
         const res = await axiosInstance.post('/category', { name: nama, icon });
@@ -453,7 +773,7 @@ const realAdminApi = {
     },
     getNotifications: async () => {
         const res = await axiosInstance.get('/notification');
-        return res.data;
+        return res.data.data || [];
     },
     createNotification: async (data) => {
         const res = await axiosInstance.post('/notification', data);

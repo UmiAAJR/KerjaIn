@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -23,7 +23,7 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Handle Global Errors (like 401 Unauthorized)
+// Response Interceptor: clear only an invalid/expired authentication session.
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {

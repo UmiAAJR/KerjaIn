@@ -15,11 +15,15 @@ export default class Worker extends Model {
       allowNull: true
     },
     status: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     bankNumber: {
       type: DataTypes.STRING(16),
+      allowNull: true
+    },
+    bankName: {
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     bankAccount: {
@@ -43,9 +47,6 @@ export default class Worker extends Model {
     tableName: 'worker',
     schema: 'public',
     timestamps: false,
-    timestamp: true,
-    createdAt: 'createdAt',
-    updatedAt: false,
     indexes: [
       {
         name: "worker_pkey",

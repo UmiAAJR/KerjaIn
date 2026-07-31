@@ -10,6 +10,8 @@ import _User from  "./User.js";
 import _Verify from  "./Verify.js";
 import _Worker from  "./Worker.js";
 import _WorkerSkill from  "./WorkerSkill.js";
+import _Withdrawal from  "./Withdrawal.js";
+import _Report from "./Report.js";
 
 export default function initModels(sequelize) {
   const Category = _Category.init(sequelize, DataTypes);
@@ -22,6 +24,8 @@ export default function initModels(sequelize) {
   const Verify = _Verify.init(sequelize, DataTypes);
   const Worker = _Worker.init(sequelize, DataTypes);
   const WorkerSkill = _WorkerSkill.init(sequelize, DataTypes);
+  const Withdrawal = _Withdrawal.init(sequelize, DataTypes);
+  const Report = _Report.init(sequelize, DataTypes);
 
   Skill.belongsTo(Category, { as: "Category", foreignKey: "CategoryID"});
   Category.hasMany(Skill, { as: "skills", foreignKey: "CategoryID"});
@@ -41,6 +45,15 @@ export default function initModels(sequelize) {
   Worker.hasOne(Verify, { as: "Verify", foreignKey: "WorkerID"});
   WorkerSkill.belongsTo(Worker, { as: "Worker", foreignKey: "WorkerID"});
   Worker.hasMany(WorkerSkill, { as: "Worker_skill", foreignKey: "WorkerID"});
+  Withdrawal.belongsTo(Worker, { as: "Worker", foreignKey: "WorkerID"});
+  Worker.hasMany(Withdrawal, { as: "Withdrawal", foreignKey: "WorkerID"});
+
+  Notification.belongsTo(User, { as: "User", foreignKey: "UserID" });
+  User.hasMany(Notification, { as: "Notifications", foreignKey: "UserID" });
+
+  Report.belongsTo(User, { as: "Reporter", foreignKey: "reporterID" });
+  Report.belongsTo(Worker, { as: "ReportedWorker", foreignKey: "reportedWorkerID" });
+  Report.belongsTo(Job, { as: "Job", foreignKey: "JobID" });
 
   return {
     Category,
@@ -53,5 +66,8 @@ export default function initModels(sequelize) {
     Verify,
     Worker,
     WorkerSkill,
+    Withdrawal,
+    Report
   };
 }
+

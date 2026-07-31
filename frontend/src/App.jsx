@@ -153,27 +153,32 @@ function AppRoutes() {
 
       <Route 
         path="/worker/notification" 
-        element={<WorkerNotification/>} 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerNotification/></ProtectedRoute>} 
       />
 
       <Route 
         path="/worker/verification" 
-        element={<WorkerVerification/>} 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerVerification/></ProtectedRoute>} 
       />
 
-        <Route 
+      <Route 
         path="/worker/editprofile" 
-        element={<WorkerEditProfile/>} 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerEditProfile/></ProtectedRoute>} 
       />
 
-        <Route 
+      <Route 
         path="/worker/ubahrekening" 
-        element={<WorkerUbahRekening/>} 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerUbahRekening/></ProtectedRoute>} 
       />
 
-        <Route 
-        path="/worker/detailpekerjaan" 
-        element={<WorkerDetailPekerjaan/>} 
+      <Route 
+        path="/worker/detailpekerjaan/:jobId" 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerDetailPekerjaan/></ProtectedRoute>} 
+      />
+
+      <Route 
+        path="/worker/tracking/:jobId" 
+        element={<ProtectedRoute allowedRoles={['worker']}><WorkerDetailPekerjaan/></ProtectedRoute>} 
       />
 
       {/* <Route 

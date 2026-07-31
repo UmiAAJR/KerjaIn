@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { workerApi } from '../../services/api';
+import { showAlert } from '../../utils/swal';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -23,15 +24,16 @@ export default function WorkerWallet() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // STATE FILTER
+  // STATE FILTER & WITHDRAW MODAL
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL' | 'SELESAI' | 'TERTUNDA'
-  const [isFilterOpen, setIsFilterOpen] = useState(false); // Kontrol dropdown filter
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [submittingWithdraw, setSubmittingWithdraw] = useState(false);
   const filterRef = useRef(null);
 
-  // FETCH DATA DARI API (Gaya .then & .catch)
-  useEffect(() => {
-    const currentWorkerId = localStorage.getItem('workerId') || 'worker-1';
-
+  const fetchWallet = () => {
+    const currentWorkerId = localStorage.getItem('workerId') || 'me';
     setLoading(true);
     workerApi.getWallet(currentWorkerId)
       .then(res => {
@@ -44,7 +46,46 @@ export default function WorkerWallet() {
         console.error("Gagal mengambil data wallet:", err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchWallet();
   }, []);
+
+  const handleWithdrawSubmit = async (e) => {
+    e.preventDefault();
+    const amountNum = Number(withdrawAmount);
+    const availableBalance = Number(walletData?.balance || 0);
+
+    if (isNaN(amountNum) || amountNum <= 0) {
+      showAlert("Nominal Tidak Valid", "warning", "Masukkan nominal penarikan yang valid!");
+      return;
+    }
+
+    if (amountNum > availableBalance) {
+      showAlert("Saldo Tidak Cukup", "warning", `Nominal penarikan (Rp${amountNum.toLocaleString('id-ID')}) melebihi saldo yang tersedia (Rp${availableBalance.toLocaleString('id-ID')})!`);
+      return;
+    }
+
+    setSubmittingWithdraw(true);
+    try {
+      const currentWorkerId = localStorage.getItem('workerId') || 'me';
+      await workerApi.withdraw(currentWorkerId, amountNum, {
+        bankName: 'BCA',
+        bankNumber: walletData?.bankAccount || '1234567890',
+        bankAccount: walletData?.bankAccount || 'Pekerja'
+      });
+
+      showAlert("Pengajuan Berhasil!", "success", `Pengajuan penarikan sebesar Rp${amountNum.toLocaleString('id-ID')} berhasil dikirim! Admin akan segera melakukan transfer manual ke rekening Anda.`);
+      setIsWithdrawModalOpen(false);
+      setWithdrawAmount('');
+      fetchWallet();
+    } catch (err) {
+      showAlert("Pengajuan Gagal", "error", err.message);
+    } finally {
+      setSubmittingWithdraw(false);
+    }
+  };
 
   // MENUTUP DROPDOWN SAAT KLIK DI LUAR MENU
   useEffect(() => {
@@ -114,7 +155,11 @@ export default function WorkerWallet() {
               <span>Akun Terverifikasi & Aman</span>
             </div>
 
-            <button className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FFA216] py-3.5 px-4 font-bold text-[#4A2800] transition hover:bg-[#ff9500] active:scale-[0.98]">
+            <button 
+              onClick={() => setIsWithdrawModalOpen(true)}
+              type="button"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[#FFA216] py-3.5 px-4 font-bold text-[#4A2800] transition hover:bg-[#ff9500] active:scale-[0.98] cursor-pointer shadow-md"
+            >
               <Banknote className="h-5 w-5 stroke-[2.5]" />
               <span className="text-base">Tarik Saldo</span>
             </button>
@@ -252,6 +297,7 @@ export default function WorkerWallet() {
               const { icon: IconComp, bg, color } = getTransactionIcon(item.type);
               const statusUpper = item.status?.toUpperCase() || '';
               const isCompleted = statusUpper === 'SELESAI' || statusUpper === 'COMPLETED';
+              const isRejected = statusUpper === 'DITOLAK' || statusUpper === 'REJECTED';
 
               return (
                 <div 
@@ -266,6 +312,11 @@ export default function WorkerWallet() {
                       <h4 className="text-sm font-extrabold text-slate-800 leading-snug">
                         {item.title || item.description}
                       </h4>
+                      {item.description && item.title && item.description !== item.title && (
+                        <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                          {item.description}
+                        </p>
+                      )}
                       <p className="text-xs font-medium text-slate-500 mt-0.5">
                         {item.date || item.createdAt}
                       </p>
@@ -283,6 +334,10 @@ export default function WorkerWallet() {
                       <span className="rounded-md bg-[#76E7B1] px-2 py-0.5 text-[10px] font-black tracking-wide text-[#004852]">
                         SELESAI
                       </span>
+                    ) : isRejected ? (
+                      <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[10px] font-black tracking-wide text-rose-700">
+                        DITOLAK
+                      </span>
                     ) : (
                       <span className="rounded-md bg-[#FDE3C2] px-2 py-0.5 text-[10px] font-black tracking-wide text-[#7A4B00]">
                         TERTUNDA
@@ -294,6 +349,74 @@ export default function WorkerWallet() {
             })
           )}
         </div>
+
+        {/* MODAL PENARIKAN SALDO */}
+        {isWithdrawModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs select-none">
+            <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2 text-slate-800 font-extrabold text-base">
+                  <Banknote className="w-5 h-5 text-[#007088]" />
+                  <span>Pengajuan Penarikan Saldo</span>
+                </div>
+                <button 
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Saldo Virtual Tersedia</span>
+                <span className="text-xl font-black text-[#007088]">
+                  Rp {(walletData?.balance || 0).toLocaleString('id-ID')}
+                </span>
+                <p className="text-[11px] text-slate-500 font-medium pt-1">
+                  Rekening Tujuan: <strong className="text-slate-700">{walletData?.bankAccount || 'BCA (Rekening Terdaftar)'}</strong>
+                </p>
+              </div>
+
+              <form onSubmit={handleWithdrawSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Nominal Penarikan (Rp)
+                  </label>
+                  <input 
+                    type="number"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="Contoh: 100000"
+                    required
+                    min={10000}
+                    max={walletData?.balance || 0}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-800 focus:outline-none focus:border-[#007088] focus:ring-1 focus:ring-[#007088]"
+                  />
+                  <span className="text-[10px] text-slate-400 block">
+                    Penarikan akan diverifikasi dan ditransfer manual oleh Admin ke rekening Anda.
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsWithdrawModalOpen(false)}
+                    className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={submittingWithdraw || !withdrawAmount}
+                    className="w-1/2 py-2.5 bg-[#FFA216] hover:bg-[#ff9500] text-[#4A2800] font-extrabold text-xs rounded-xl transition-all shadow-sm disabled:opacity-50"
+                  >
+                    {submittingWithdraw ? "Mengirim..." : "Kirim Request"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
     </MobileLayout>

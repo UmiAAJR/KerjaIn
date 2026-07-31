@@ -1,4 +1,5 @@
 import { MapPin, Bell, ArrowLeft } from 'lucide-react';
+import { showAlert } from '../../utils/swal';
 
 const TopNav = ({
   variant = 'location', // 'location' | 'brand' | 'title'
@@ -11,6 +12,14 @@ const TopNav = ({
   onBack,
   rightElement
 }) => {
+  const handleBellClick = (e) => {
+    if (onNotificationClick) {
+      onNotificationClick(e);
+    } else {
+      showAlert('Masih Dalam Pengembangan', 'info', 'Fitur notifikasi pengguna sedang dalam tahap pengembangan.');
+    }
+  };
+
   return (
     <header className="bg-white border-b border-slate-100 px-5 py-3 flex items-center justify-between shrink-0 w-full select-none min-h-[56px]">
       {variant === 'title' ? (
@@ -69,8 +78,9 @@ const TopNav = ({
           {/* Notification Icon */}
           <button
             type="button"
-            onClick={onNotificationClick}
-            className="p-2.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl relative transition-all active:scale-95 border border-transparent hover:border-slate-100"
+            onClick={handleBellClick}
+            className="p-2.5 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-xl relative transition-all active:scale-95 border border-transparent hover:border-slate-100 cursor-pointer"
+            title="Notifikasi"
           >
             <Bell size={20} className="stroke-2" />
             {hasNotification && (
@@ -84,3 +94,4 @@ const TopNav = ({
 };
 
 export default TopNav;
+
