@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { workerApi } from '../../services/api';
+import { workerApi } from '../../services/api'; // atau '../../services/workerService'
 import MobileLayout from "../../components/layout/MobileLayout";
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -12,7 +12,7 @@ export default function WorkerDashboard() {
   const [data, setData] = useState(null);
   const [verification, setVerification] = useState(null);
 
-  // Fungsi helper format rupiah
+  // Helper format rupiah
   const formatRupiah = (number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -54,7 +54,7 @@ export default function WorkerDashboard() {
     return (
       <MobileLayout>
         <div className="p-5 text-center text-red-500">
-          Gagal memuat data pekerja.
+          Gagal memuat data pekerja. Silakan periksa koneksi atau akun Anda.
         </div>
       </MobileLayout>
     );
@@ -79,7 +79,7 @@ export default function WorkerDashboard() {
         {/* Heading */}
         <div>
           <h2 className="text-2xl font-black text-primary-600 font-heading tracking-tight leading-tight">
-            Halo, {name || 'Pekerja'}!
+            Halo, {data.name} !
           </h2>
           <h3 className="text-sm text-gray-500 mt-0.5">
             Siap untuk menyelesaikan pekerjaan hari ini?
@@ -121,12 +121,15 @@ export default function WorkerDashboard() {
           <div className="relative z-10">
             <p className="text-md font-medium text-cyan-100/80">Saldo Anda</p>
             <h2 className="mt-2 mb-4 text-3xl font-bold tracking-tight leading-tight text-white">
-              {formatRupiah(income?.walletBalance)}
+              {formatRupiah(data?.walletBalance)}
             </h2>
 
             {/* Tombol Tarik Dana & Riwayat */}
             <div className="flex gap-3">
-              <Link to={"/worker/wallet"} className="flex-1 rounded-xl bg-[#dbeefd] py-3 text-center font-semibold text-[#0e7490] transition hover:bg-white active:scale-[0.98]">
+              <Link 
+                to="/worker/wallet" 
+                className="flex-1 rounded-xl bg-[#dbeefd] py-3 text-center font-semibold text-[#0e7490] transition hover:bg-white active:scale-[0.98]"
+              >
                 Tarik Dana
               </Link>
 
@@ -157,7 +160,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Hari Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(income?.todayIncome)}
+                  {formatRupiah(data?.todayIncome)}
                 </p>
               </div>
             </div>
@@ -167,7 +170,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Minggu Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(income?.weeklyIncome)}
+                  {formatRupiah(data?.weeklyIncome)}
                 </p>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { workerApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from "../../components/layout/MobileLayout";
 import { workerApi } from '../../services/api';
@@ -104,6 +105,11 @@ export default function EditWorkerProfile({ user, onSave, onBack }) {
     const [selectedSkills, setSelectedSkills] = useState([]); // Max 3 items
     const [previewAvatar, setPreviewAvatar] = useState(DEFAULT_AVATAR);
     const [selectedSkillInput, setSelectedSkillInput] = useState("");
+    
+    // State UX
+    const [fetching, setFetching] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     // Load categories and worker profile data
     useEffect(() => {
@@ -334,6 +340,12 @@ export default function EditWorkerProfile({ user, onSave, onBack }) {
                     <h1 className="text-base font-extrabold text-slate-800">Edit Profil Pekerja</h1>
                     <div className="w-8"></div>
                 </div>
+
+                {errorMessage && (
+                    <div className="mx-5 mt-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs">
+                        {errorMessage}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-5">
                     

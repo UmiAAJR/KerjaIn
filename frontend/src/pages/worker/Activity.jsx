@@ -44,6 +44,7 @@ export default function WorkerActivity() {
     }
   };
 
+  // 2. RUN FETCH SAAT KOMPONEN PERTAMA KALI DIMUAT
   useEffect(() => {
     setLoading(true);
     fetchActiveJobs();
@@ -284,8 +285,9 @@ export default function WorkerActivity() {
                       <img
                         src={
                           job.clientAvatar ||
+                          job.Client?.User?.photo ||
                           `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            job.clientName || 'Client'
+                            job.clientName || job.Client?.User?.name || 'Client'
                           )}&background=random`
                         }
                         alt={job.clientName}

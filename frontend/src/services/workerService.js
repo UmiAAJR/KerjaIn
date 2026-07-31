@@ -11,7 +11,7 @@ const getWorkerHourlyRate = (worker) => {
             return Number(firstSkill.hourlyRate);
         }
     }
-    return 30000;
+    return 30000; 
 };
 
 const mockWorkerApi = {
@@ -75,10 +75,26 @@ const mockWorkerApi = {
         return workers[idx];
     },
 
-    getWallet: async (workerId) => {
+    getWallet: async () => {
+
+        
+        const token = localStorage.getItem('ki_token')
         const jobs = (getData('ki_jobs') || []).filter(j => j.workerId === workerId && j.status === 'COMPLETED' && j.escrowStatus === 'Released');
         const totalIncome = jobs.reduce((acc, curr) => acc + curr.price, 0);
 
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const res = await axiosInstance.get(`/worker/${payload.id}`);
+                worker = res.data.data;
+
+                const notifRes = await axiosInstance.get('/notification', { params: { role: 'worker' } });
+                const notifications = notifRes.data.data || [];
+                unreadNotification = notifications.filter(n => !n.isRead).length;
+            } catch (err) {
+                console.error("Failed to load client context for dashboard:", err);
+            }
+        }
         const txs = jobs.map(j => ({
             transactionId: `tx-${j.jobId}`,
             type: 'Job Income',
@@ -464,6 +480,7 @@ const realWorkerApi = {
         }
         return null;
     },
+
     updateProfile: async (workerId, profileData) => {
         const resolvedId = await resolveWorkerId(workerId);
         const userData = {};
@@ -479,7 +496,6 @@ const realWorkerApi = {
             if (userId) {
                 await axiosInstance.patch(`/user/update`, userData);
             }
-        }
 
         const workerData = {};
         if (profileData.description) workerData.description = profileData.description;
@@ -531,6 +547,7 @@ const realWorkerApi = {
 
         return await realWorkerApi.getProfile(resolvedId);
     },
+
     getWallet: async (workerId) => {
         const resolvedId = await resolveWorkerId(workerId);
         let worker = null;
@@ -786,6 +803,7 @@ const realWorkerApi = {
             return !['COMPLETED', 'CANCELLED'].includes(s);
         });
     },
+
     getJobDetail: async (jobId) => {
         const res = await axiosInstance.get(`/job/${jobId}`);
         const j = res.data.data;
@@ -818,9 +836,9 @@ const realWorkerApi = {
         return res.data;
     },
     startJob: async (jobId) => {
-        const res = await axiosInstance.patch(`/job/${jobId}`, { 
-            status: 'IN_PROGRESS', 
-            startedAt: new Date().toISOString() 
+        const res = await axiosInstance.patch(`/job/${jobId}`, {
+            status: 'IN_PROGRESS',
+            startedAt: new Date().toISOString()
         });
         return res.data;
     },
@@ -907,6 +925,6 @@ const realWorkerApi = {
     }
 };
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
 export const workerApi = USE_MOCK ? mockWorkerApi : realWorkerApi;
