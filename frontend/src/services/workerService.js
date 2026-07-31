@@ -427,10 +427,15 @@ const realWorkerApi = {
             rating: worker?.rating || 5.0,
             status: worker?.status || 'Available',
             hourlyRate,
+            walletBalance: balance,
+            balance: balance,
+            todayIncome: 0,
+            weeklyIncome: Math.round(balance * 0.7),
+            monthlyIncome: Math.round(balance),
             income: {
                 todayIncome: 0,
-                weeklyIncome: balance * 0.7,
-                monthlyIncome: balance * 0.9,
+                weeklyIncome: Math.round(balance * 0.7),
+                monthlyIncome: Math.round(balance),
                 walletBalance: balance
             },
             order: {
