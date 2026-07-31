@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
+import { showAlert, showConfirm } from '../../utils/swal';
 import { 
   ShieldCheck, 
   Search, 
@@ -48,15 +49,24 @@ const AdminVerification = () => {
   }, []);
 
   const handleVerifyAction = async (requestId, workerId, status) => {
-    const actionText = status === 'Verified' || status === 'accepted' ? 'menyetujui' : 'menolak';
-    if (!window.confirm(`Apakah Anda yakin ingin ${actionText} verifikasi identitas worker ini?`)) return;
+    const isApproved = status === 'Verified' || status === 'accepted';
+    const actionText = isApproved ? 'menyetujui' : 'menolak';
+    
+    const confirmed = await showConfirm(
+      "Konfirmasi Verifikasi", 
+      `Apakah Anda yakin ingin ${actionText} verifikasi identitas worker ini?`,
+      isApproved ? "Ya, Setujui" : "Ya, Tolak"
+    );
+    
+    if (!confirmed) return;
     
     try {
       setActionLoading(true);
-      // Calls API to update verification status (translates to VerifyID in real database or workerId in mock)
-      const targetId = workerId || requestId;
+      // Calls API to update verification status (VerifyID in real database)
+      const targetId = requestId || workerId;
       await adminApi.verifyWorker(targetId, status);
-      alert(`Verifikasi berhasil diubah menjadi: ${status === 'Verified' || status === 'accepted' ? 'Diterima' : 'Ditolak'}`);
+      
+      showAlert("Berhasil", "success", `Verifikasi berhasil diubah menjadi: ${isApproved ? 'Diterima' : 'Ditolak'}`);
       
       // If resolving the active detail, reset or refresh
       if (selectedRequest && (selectedRequest.VerifyID === requestId || selectedRequest.id === requestId)) {
@@ -64,7 +74,7 @@ const AdminVerification = () => {
       }
       fetchVerifications();
     } catch (err) {
-      alert("Gagal merubah status verifikasi: " + err.message);
+      showAlert("Gagal", "error", "Gagal merubah status verifikasi: " + err.message);
     } finally {
       setActionLoading(false);
     }

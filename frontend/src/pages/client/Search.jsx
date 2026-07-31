@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { clientApi } from '../../services/api';
+import { showAlert } from '../../utils/swal';
 import MobileLayout from '../../components/layout/MobileLayout';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+
 
 import {
     Search as SearchIcon,
@@ -189,7 +191,7 @@ const Search = () => {
                                         {/* Left avatar with green verified overlay badge */}
                                         <div className="relative shrink-0">
                                             <img
-                                                src={worker.photo}
+                                                src={worker.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
                                                 alt={worker.name}
                                                 className="w-14 h-14 rounded-full object-cover border border-slate-100"
                                             />
@@ -254,13 +256,14 @@ const Search = () => {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                alert(`Fitur Chat dengan ${worker.name} akan segera hadir!`);
+                                                showAlert('Fitur Chat', 'info', `Fitur Chat dengan ${worker.name} akan segera hadir!`);
                                             }}
                                             className="w-9 h-9 border border-slate-200 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-50 active:scale-95 transition-all cursor-pointer shrink-0"
                                             title="Kirim Pesan"
                                         >
                                             <MessageSquare size={16} className="stroke-[2.5]" />
                                         </button>
+
                                     </div>
 
                                 </div>

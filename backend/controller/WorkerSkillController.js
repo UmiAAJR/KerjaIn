@@ -1,12 +1,5 @@
-import db from "../db/db.js";
-import initModels from "../model/init-models.js";
+import { WorkerSkill, Worker, User, Skill } from "../model/models.js";
 
-
-const model = initModels(db)
-const WorkerSkill = model.WorkerSkill
-const Worker = model.Worker
-const User = model.User
-const Skill = model.Skill
 
 export const getWorkerSkill = async (req, res) => {
     try {
@@ -70,7 +63,8 @@ export const getDetailWorkerSkill = async (req, res) => {
                     ]
                 },
                 {
-                    model: Skill
+                    model: Skill,
+                    as: "Skill"
                 }
             ]
         })
@@ -88,7 +82,10 @@ export const getDetailWorkerSkill = async (req, res) => {
 
 export const createWorkerSkill = async (req, res) => {
     try {
-        await WorkerSkill.create(req.body)
+        const worker = await Worker.findOne({ where: { WorkerID: req.body.WorkerID } });
+        if (!worker) return res.status(404).json({ message: "Worker tidak ditemukan" });
+        if (req.user.role !== 'admin' && worker.UserID !== req.user.id) return res.status(403).json({ message: "Akses ditolak" });
+        await WorkerSkill.create({ WorkerID: worker.WorkerID, SkillID: req.body.SkillID, hourlyRate: req.body.hourlyRate })
 
         return res.json({
             message: "Berhasil membuat data"
@@ -102,14 +99,13 @@ export const createWorkerSkill = async (req, res) => {
 
 export const updateWorkerSkill = async (req, res) => {
     try {
-        await WorkerSkill.update(req.body, {
-            where: {
-                WorkerSkillID: req.params.id
-            }
-        })
+        const workerSkill = await WorkerSkill.findByPk(req.params.id, { include: [{ model: Worker, as: 'Worker' }] });
+        if (!workerSkill) return res.status(404).json({ message: "Data skill tidak ditemukan" });
+        if (req.user.role !== 'admin' && workerSkill.Worker?.UserID !== req.user.id) return res.status(403).json({ message: "Akses ditolak" });
+        await workerSkill.update({ SkillID: req.body.SkillID, hourlyRate: req.body.hourlyRate })
 
         return res.json({
-            message: "Berhasil memperbarui kategori"
+            message: "Berhasil memperbarui data skill worker"
         })
     } catch (error) {
         return res.status(500).json({
@@ -120,11 +116,10 @@ export const updateWorkerSkill = async (req, res) => {
 
 export const deleteWorkerSkill = async (req, res) => {
     try {
-        await WorkerSkill.destroy({
-            where: {
-                WorkerSkillID: req.params.id
-            }
-        })
+        const workerSkill = await WorkerSkill.findByPk(req.params.id, { include: [{ model: Worker, as: 'Worker' }] });
+        if (!workerSkill) return res.status(404).json({ message: "Data skill tidak ditemukan" });
+        if (req.user.role !== 'admin' && workerSkill.Worker?.UserID !== req.user.id) return res.status(403).json({ message: "Akses ditolak" });
+        await workerSkill.destroy()
 
         return res.json({
             message: "Berhasil menghapus data"

@@ -1,8 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
-import AdminClients from './Clients';
-import AdminWorkers from './Workers';
-import { Users, User } from 'lucide-react';
+import { adminApi } from '../../services/adminService';
+import { showAlert } from '../../utils/swal';
+import { 
+  Users, 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Search, 
+  AlertCircle, 
+  Check, 
+  X, 
+  Star, 
+  ShieldCheck, 
+  ShieldAlert 
+} from 'lucide-react';
 
 const AdminUsers = () => {
   const [activeTab, setActiveTab] = useState('clients'); // 'clients' | 'workers'
@@ -10,14 +23,13 @@ const AdminUsers = () => {
   return (
     <AdminLayout activeMenu="users">
       <div className="space-y-6">
-        
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 bg-white px-6 rounded-2xl shadow-xs py-3 border border-slate-100 flex-wrap gap-2 select-none">
+        <div className="flex border-b border-slate-200 bg-white px-6 rounded-2xl shadow-xs py-3 border-slate-100 flex-wrap gap-2 select-none">
           <button
             onClick={() => setActiveTab('clients')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider uppercase transition-all duration-200 border cursor-pointer
               ${activeTab === 'clients'
-                ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-sm'
+                ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-xs'
                 : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700'
               }`}
           >
@@ -29,7 +41,7 @@ const AdminUsers = () => {
             onClick={() => setActiveTab('workers')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black tracking-wider uppercase transition-all duration-200 border cursor-pointer
               ${activeTab === 'workers'
-                ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-sm'
+                ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-xs'
                 : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700'
               }`}
           >
@@ -41,31 +53,18 @@ const AdminUsers = () => {
         {/* Tab Content */}
         <div>
           {activeTab === 'clients' ? (
-            /* We render the contents directly but without AdminLayout wrapper to prevent nested layout issues */
-            <ClientsTableWrapper />
+            <InnerClients />
           ) : (
-            <WorkersTableWrapper />
+            <InnerWorkers />
           )}
         </div>
-
       </div>
     </AdminLayout>
   );
 };
 
-// We define a wrapper that just renders the inner content of Clients
-const ClientsTableWrapper = () => {
-  return (
-    <div className="space-y-6">
-      {/* We reuse the code from Clients.jsx without its AdminLayout wrapper */}
-      <InnerClients />
-    </div>
-  );
-};
-
-// Inner Clients implementation
+// Inner Clients Component
 const InnerClients = () => {
-  // Let's import the client list rendering logic directly
   const [clients, setClients] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,19 +75,19 @@ const InnerClients = () => {
       const res = await adminApi.getClients();
       setClients(res || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch clients error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchClients();
   }, []);
 
   const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (c.phone && c.phone.includes(searchQuery))
   );
 
@@ -99,9 +98,6 @@ const InnerClients = () => {
       </div>
     );
   }
-
-  // Import elements directly
-  const { Mail, Phone, MapPin, Search, AlertCircle } = require('lucide-react');
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-6 select-none">
@@ -127,6 +123,7 @@ const InnerClients = () => {
           />
         </div>
       </div>
+
       <div className="overflow-x-auto min-w-0">
         {filteredClients.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-2">
@@ -146,7 +143,7 @@ const InnerClients = () => {
             </thead>
             <tbody>
               {filteredClients.map((client) => (
-                <tr key={client.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition-colors">
+                <tr key={client.id || client.UserID} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition-colors">
                   <td className="py-4">
                     <img
                       src={client.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
@@ -156,7 +153,7 @@ const InnerClients = () => {
                   </td>
                   <td className="py-4">
                     <div className="font-extrabold text-slate-800 text-sm leading-tight">{client.name}</div>
-                    <div className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wider">ID: {client.id}</div>
+                    <div className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wider">ID: {String(client.id || client.UserID).slice(0, 8)}</div>
                   </td>
                   <td className="py-4 space-y-1">
                     <div className="flex items-center gap-1.5 text-slate-600 font-semibold">
@@ -165,13 +162,13 @@ const InnerClients = () => {
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
                       <Phone size={12} className="text-slate-400" />
-                      <span>{client.phone || '-'}</span>
+                      <span>{client.phone || client.phoneNumber || '-'}</span>
                     </div>
                   </td>
                   <td className="py-4 max-w-xs">
                     <div className="flex items-start gap-1 text-slate-600 font-medium leading-relaxed truncate">
                       <MapPin size={12} className="text-slate-400 shrink-0 mt-0.5" />
-                      <span>{client.address || 'Jakarta, Indonesia'}</span>
+                      <span>{client.address || 'Indonesia'}</span>
                     </div>
                   </td>
                   <td className="py-4 text-center">
@@ -189,16 +186,7 @@ const InnerClients = () => {
   );
 };
 
-// We define a wrapper that just renders the inner content of Workers
-const WorkersTableWrapper = () => {
-  return (
-    <div className="space-y-6">
-      <InnerWorkers />
-    </div>
-  );
-};
-
-// Inner Workers implementation
+// Inner Workers Component
 const InnerWorkers = () => {
   const [workers, setWorkers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,29 +199,30 @@ const InnerWorkers = () => {
       const res = await adminApi.getWorkers();
       setWorkers(res || []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch workers error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchWorkers();
   }, []);
 
   const handleVerify = async (workerId, status) => {
     try {
       await adminApi.verifyWorker(workerId, status);
+      showAlert("Berhasil", "success", "Status verifikasi worker berhasil diubah.");
       fetchWorkers();
     } catch (err) {
-      alert("Gagal mengubah status verifikasi: " + err.message);
+      showAlert("Gagal", "error", "Gagal mengubah status verifikasi: " + err.message);
     }
   };
 
   const filteredWorkers = workers.filter(w => {
     const matchesSearch = 
-      w.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      w.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (w.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (w.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (w.phone && w.phone.includes(searchQuery));
     
     const matchesStatus = 
@@ -250,8 +239,6 @@ const InnerWorkers = () => {
       </div>
     );
   }
-
-  const { Mail, Phone, Search, AlertCircle, Check, X, Star, ShieldCheck, ShieldAlert } = require('lucide-react');
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-6 select-none">
@@ -290,6 +277,7 @@ const InnerWorkers = () => {
           </div>
         </div>
       </div>
+
       <div className="overflow-x-auto min-w-0">
         {filteredWorkers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-2">
@@ -323,7 +311,7 @@ const InnerWorkers = () => {
                   'Not_Submitted': 'Belum Diajukan'
                 };
                 return (
-                  <tr key={worker.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition-colors">
+                  <tr key={worker.id || worker.WorkerID} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/30 transition-colors">
                     <td className="py-4">
                       <img
                         src={worker.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
@@ -333,7 +321,7 @@ const InnerWorkers = () => {
                     </td>
                     <td className="py-4">
                       <div className="font-extrabold text-slate-800 text-sm leading-tight">{worker.name}</div>
-                      <div className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wider">ID: {worker.id}</div>
+                      <div className="text-[10px] font-semibold text-slate-400 mt-0.5 uppercase tracking-wider">ID: {String(worker.id || worker.WorkerID).slice(0, 8)}</div>
                     </td>
                     <td className="py-4 space-y-1">
                       <div className="flex items-center gap-1.5 text-slate-600 font-semibold">
@@ -342,14 +330,14 @@ const InnerWorkers = () => {
                       </div>
                       <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
                         <Phone size={12} className="text-slate-400 shrink-0" />
-                        <span>{worker.phone || '-'}</span>
+                        <span>{worker.phone || worker.phoneNumber || '-'}</span>
                       </div>
                     </td>
                     <td className="py-4 text-center">
                       <div className="flex items-center justify-center gap-2 font-bold text-slate-700">
                         <span className="flex items-center gap-0.5 text-amber-500">
                           <Star size={12} fill="currentColor" />
-                          <span>{worker.rating?.toFixed(1) || '5.0'}</span>
+                          <span>{worker.rating ? Number(worker.rating).toFixed(1) : '5.0'}</span>
                         </span>
                         <span className="text-slate-300">•</span>
                         <span className="text-slate-600">{worker.jobsDone || 0} Job</span>
@@ -377,14 +365,14 @@ const InnerWorkers = () => {
                             </a>
                           )}
                           <button
-                            onClick={() => handleVerify(worker.id, 'Verified')}
+                            onClick={() => handleVerify(worker.id || worker.WorkerID, 'Verified')}
                             className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-all border border-emerald-100 cursor-pointer"
                             title="Setujui Verifikasi KTP"
                           >
                             <Check size={14} className="stroke-[2.5]" />
                           </button>
                           <button
-                            onClick={() => handleVerify(worker.id, 'Rejected')}
+                            onClick={() => handleVerify(worker.id || worker.WorkerID, 'Rejected')}
                             className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-all border border-rose-100 cursor-pointer"
                             title="Tolak Verifikasi KTP"
                           >
@@ -413,24 +401,5 @@ const InnerWorkers = () => {
     </div>
   );
 };
-
-// We need custom require for lucide icons in the inner components
-const require = (modName) => {
-  if (modName === 'lucide-react') {
-    return { Mail, Phone, MapPin, Search, AlertCircle, Check, X, Star, ShieldCheck, ShieldAlert };
-  }
-};
-
-import { Mail as MailIcon, Phone as PhoneIcon, MapPin as MapPinIcon, Search as SearchIcon2, AlertCircle as AlertCircleIcon, Check as CheckIcon, X as XIcon, Star as StarIcon, ShieldCheck as ShieldCheckIcon, ShieldAlert as ShieldAlertIcon } from 'lucide-react';
-const Mail = MailIcon;
-const Phone = PhoneIcon;
-const MapPin = MapPinIcon;
-const Search = SearchIcon2;
-const AlertCircle = AlertCircleIcon;
-const Check = CheckIcon;
-const X = XIcon;
-const Star = StarIcon;
-const ShieldCheck = ShieldCheckIcon;
-const ShieldAlert = ShieldAlertIcon;
 
 export default AdminUsers;

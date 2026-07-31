@@ -1,43 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
+import { showAlert, showConfirm } from '../../utils/swal';
 import { 
-  AlertTriangle, 
+  FileText, 
   Search, 
-  AlertCircle, 
-  Check, 
-  Calendar, 
+  CheckCircle, 
+  Clock, 
+  AlertTriangle, 
   Eye, 
-  FileText,
+  RefreshCw,
   User,
-  Clock,
-  Briefcase,
-  X
+  Wrench,
+  X,
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 
 const AdminReports = () => {
   const [reports, setReports] = useState([]);
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [selectedDetails, setSelectedDetails] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Pending'); // 'All' | 'Pending' | 'Resolved'
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [activePhotoModal, setActivePhotoModal] = useState(null); // URL of photo to show in lightbox
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedReport, setSelectedReport] = useState(null);
 
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const res = await adminApi.getReports();
+      const res = await adminApi.getReports().catch(() => []);
       setReports(res || []);
-      
-      // Keep selected report details refreshed
-      if (selectedReport) {
-        const details = await adminApi.getReportDetail(selectedReport.reportId);
-        setSelectedDetails(details);
-      }
     } catch (err) {
-      console.error("Error fetching reports:", err);
+      console.error("Failed to fetch reports:", err);
     } finally {
       setLoading(false);
     }
@@ -47,316 +40,306 @@ const AdminReports = () => {
     fetchReports();
   }, []);
 
-  const handleSelectReport = async (report) => {
+  const handleResolve = async (reportId) => {
+    const isConfirmed = await showConfirm("Konfirmasi Penyelesaian", "Tandai laporan ini sebagai selesai/teratasi?", "Ya, Selesaikan");
+    if (!isConfirmed) return;
     try {
-      setSelectedReport(report);
-      setSelectedDetails(null);
-      const details = await adminApi.getReportDetail(report.reportId);
-      setSelectedDetails(details);
-    } catch (err) {
-      alert("Gagal memuat detail laporan: " + err.message);
-    }
-  };
-
-  const handleResolveReport = async (reportId) => {
-    if (!window.confirm("Apakah Anda yakin ingin menandai laporan keluhan ini telah selesai ditangani?")) return;
-    try {
-      setActionLoading(true);
       await adminApi.resolveReport(reportId);
-      alert("Laporan berhasil diselesaikan!");
-      
-      // Refresh current details
-      const details = await adminApi.getReportDetail(reportId);
-      setSelectedDetails(details);
-      
+      showAlert("Berhasil!", "success", "Laporan berhasil diselesaikan!");
+      setSelectedReport(null);
       fetchReports();
     } catch (err) {
-      alert("Gagal memproses laporan: " + err.message);
-    } finally {
-      setActionLoading(false);
+      showAlert("Gagal", "error", "Gagal memperbarui status laporan: " + err.message);
     }
   };
 
-  const filteredReports = reports.filter(r => {
-    const reporter = r.reporterName || '';
-    const reported = r.reportedWorkerName || '';
-    const matchesSearch = reporter.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          reported.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.reportId.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'All' || 
-                          r.status === statusFilter;
 
+  const filteredReports = reports.filter(r => {
+    const matchesSearch = (r.reporterName || r.Reporter?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (r.reportedWorkerName || r.ReportedWorker?.User?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (r.category || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || (r.status || '').toLowerCase() === filterStatus.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status) => {
-    if (status === 'Resolved') {
-      return <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">SELESAI</span>;
-    } else {
-      return <span className="bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full animate-pulse">MENUNGU REVIEW</span>;
-    }
-  };
+  const pendingCount = reports.filter(r => (r.status || '').toLowerCase() === 'pending').length;
+  const resolvedCount = reports.filter(r => (r.status || '').toLowerCase() === 'resolved').length;
 
   return (
     <AdminLayout activeMenu="reports">
-      <div className="space-y-6 select-none">
+      <div className="space-y-6">
         
-        {/* Reports Controls Pane */}
-        <div className="flex border-b border-slate-200 bg-white px-6 rounded-2xl shadow-xs py-3 border border-slate-100 flex-wrap gap-2 items-center justify-between">
-          <div className="flex flex-wrap gap-1.5">
-            {['Pending', 'Resolved', 'All'].map((status) => (
+        {/* Notice Banner Dalam Pengembangan */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 text-amber-900 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-xl font-bold shrink-0">
+              <Wrench size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-sm text-amber-900 font-heading uppercase tracking-wider">MODUL DALAM PENGEMBANGAN</span>
+                <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Development Preview</span>
+              </div>
+              <p className="text-xs font-semibold text-amber-800/90 mt-0.5 leading-relaxed">
+                Fitur Laporan Kendala & Penanganan Sengketa ini sedang disiapkan untuk rilis versi berikutnya. Seluruh antarmuka, statistik, dan tabel laporan di bawah diperlihatkan sebagai pratinjau aktif.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Header Title & Quick Stats */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-heading flex items-center gap-2.5">
+              <span>Laporan Kendala & Sengketa</span>
+            </h1>
+
+            <p className="text-sm font-medium text-slate-500 mt-1">
+              Audit dan selesaikan aduan kendala pekerjaan antar pengguna secara responsif.
+            </p>
+          </div>
+
+          <button 
+            onClick={fetchReports}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold shadow-xs hover:bg-slate-50 transition-colors w-fit"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
+
+        {/* Stats Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+              <FileText size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Laporan</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-0.5">{reports.length}</h3>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+              <Clock size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Menunggu Penanganan</p>
+              <h3 className="text-2xl font-black text-amber-600 mt-0.5">{pendingCount}</h3>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+              <CheckCircle size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Selesai / Ditangani</p>
+              <h3 className="text-2xl font-black text-emerald-600 mt-0.5">{resolvedCount}</h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input
+              type="text"
+              placeholder="Cari pelapor, worker, kategori..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+            {['all', 'pending', 'resolved'].map((st) => (
               <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-black tracking-wider uppercase transition-all duration-200 border cursor-pointer
-                  ${statusFilter === status
-                    ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-sm'
-                    : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700'
-                  }`}
+                key={st}
+                onClick={() => setFilterStatus(st)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold capitalize transition-all whitespace-nowrap ${
+                  filterStatus === st
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
               >
-                {status === 'Pending' ? 'Menunggu Penanganan' : status === 'Resolved' ? 'Telah Selesai' : 'Semua Laporan'}
+                {st === 'all' ? 'Semua Status' : st}
               </button>
             ))}
           </div>
-
-          <div className="relative max-w-xs w-full mt-2 sm:mt-0">
-            <span className="absolute inset-y-0 left-3.5 flex items-center text-slate-400">
-              <Search size={15} />
-            </span>
-            <input
-              type="text"
-              placeholder="Cari pelapor, terlapor, kategori..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-xs font-semibold text-slate-700 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-teal-500 transition-all"
-            />
-          </div>
         </div>
 
-        {/* Content Layout Split */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          
-          {/* Reports List Pane */}
-          <div className="xl:col-span-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-6 min-w-0">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider font-heading">
-                Keluhan Pengguna (Reports)
-              </h3>
-              <span className="bg-rose-50 text-rose-600 font-black text-[10px] px-2.5 py-1 rounded-full border border-rose-100">
-                {filteredReports.length} LAPORAN
-              </span>
+        {/* Reports Table */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-3"></div>
+              <p className="text-xs font-semibold text-slate-500">Memuat laporan kendala...</p>
             </div>
-
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
-              {loading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
-                </div>
-              ) : filteredReports.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-slate-400 space-y-2">
-                  <AlertCircle size={32} className="stroke-1.5 text-slate-350" />
-                  <p className="text-xs font-bold uppercase tracking-wider">Aman. Tidak ada laporan kendala.</p>
-                </div>
-              ) : (
-                filteredReports.map((r) => {
-                  const isSelected = selectedReport && selectedReport.reportId === r.reportId;
-                  return (
-                    <div
-                      key={r.reportId}
-                      onClick={() => handleSelectReport(r)}
-                      className={`p-4 rounded-2xl border transition-all duration-250 cursor-pointer flex flex-col gap-2 relative overflow-hidden group
-                        ${isSelected 
-                          ? 'border-teal-300 bg-teal-50/20 shadow-sm' 
-                          : 'border-slate-100 bg-slate-50/30 hover:border-slate-200 hover:bg-slate-50/60'}`}
-                    >
-                      <div className="flex justify-between items-start gap-1">
-                        <span className="font-extrabold text-slate-800 text-xs truncate max-w-[150px]">
-                          {r.category}
-                        </span>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                          {r.createdAt ? r.createdAt.split(' ')[0] : ''}
-                        </span>
-                      </div>
-
-                      <p className="text-[10px] font-semibold text-slate-400 leading-none">
-                        Pelapor: {r.reporterName} • Terlapor: {r.reportedWorkerName}
-                      </p>
-
-                      <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mt-1 leading-relaxed">
-                        {r.description}
-                      </p>
-
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/50">
-                        <span className="text-[9px] font-semibold text-slate-400">ID: {r.reportId}</span>
-                        {getStatusBadge(r.status)}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+          ) : filteredReports.length === 0 ? (
+            <div className="p-12 text-center space-y-3">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto">
+                <FileText size={32} />
+              </div>
+              <p className="text-sm font-bold text-slate-700">Tidak ada laporan ditemukan</p>
+              <p className="text-xs text-slate-400">Belum ada aduan kendala yang dikirim oleh pengguna saat ini.</p>
             </div>
-          </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-5">ID Laporan</th>
+                    <th className="py-3.5 px-5">Pelapor</th>
+                    <th className="py-3.5 px-5">Worker Terlaporkan</th>
+                    <th className="py-3.5 px-5">Kategori Kendala</th>
+                    <th className="py-3.5 px-5">Status</th>
+                    <th className="py-3.5 px-5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm font-medium text-slate-700">
+                  {filteredReports.map((r) => {
+                    const isPending = (r.status || '').toLowerCase() === 'pending';
+                    const reporterName = r.reporterName || r.Reporter?.name || 'Pelanggan';
+                    const workerName = r.reportedWorkerName || r.ReportedWorker?.User?.name || 'Worker';
+                    const reportId = r.reportId || r.ReportID || 'REP-001';
 
-          {/* Details & Resolution Pane */}
-          <div className="xl:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-6 min-h-[400px]">
-            {!selectedReport ? (
-              <div className="flex-grow flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400">
-                  <AlertTriangle size={26} />
-                </div>
-                <p className="text-xs font-black uppercase tracking-wider">Pilih salah satu keluhan untuk meninjau detail</p>
-              </div>
-            ) : !selectedDetails ? (
-              <div className="flex-grow flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                
-                {/* Details Header */}
-                <div className="flex justify-between items-start gap-4 border-b border-slate-100 pb-5">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(selectedDetails.report?.status)}
-                      <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                        <Calendar size={11} />
-                        <span>Kirim: {selectedDetails.report?.createdAt}</span>
-                      </span>
-                    </div>
-                    <h3 className="text-base font-black text-slate-800 font-heading">
-                      Komplain Kategori: {selectedDetails.report?.category}
-                    </h3>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                      Report ID: {selectedDetails.report?.reportId}
-                    </p>
-                  </div>
-
-                  {selectedDetails.report?.status === 'Pending' && (
-                    <button
-                      onClick={() => handleResolveReport(selectedDetails.report?.reportId)}
-                      disabled={actionLoading}
-                      className="bg-teal-500 hover:bg-teal-600 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl border border-teal-400/20 shadow-xs hover:shadow-sm cursor-pointer flex items-center gap-1.5 transition-all active:scale-[0.98]"
-                    >
-                      <Check size={14} className="stroke-[2.5]" />
-                      <span>Selesaikan Laporan</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Dispute Parties */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* Reporter Client */}
-                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2.5 text-xs">
-                    <div className="text-[9px] font-black text-teal-600 uppercase tracking-widest">Pelapor (Client)</div>
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 shrink-0">
-                        <User size={16} className="stroke-[2.5]" />
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-slate-800 leading-snug">{selectedDetails.client?.name || selectedDetails.report?.reporterName}</h4>
-                        <span className="text-[10px] font-semibold text-slate-400">{selectedDetails.client?.email || 'Pelapor Terdaftar'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Reported Worker */}
-                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl space-y-2.5 text-xs">
-                    <div className="text-[9px] font-black text-rose-600 uppercase tracking-widest">Terlapor (Worker)</div>
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={selectedDetails.worker?.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150'}
-                        alt={selectedDetails.worker?.name}
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                      />
-                      <div>
-                        <h4 className="font-extrabold text-slate-800 leading-snug">{selectedDetails.worker?.name || selectedDetails.report?.reportedWorkerName}</h4>
-                        <span className="text-[10px] font-semibold text-slate-400">ID: {selectedDetails.worker?.id || selectedDetails.report?.reportedWorkerId}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Complaint Body */}
-                <div className="p-4 bg-slate-50/50 border border-slate-150 rounded-2xl space-y-3 text-xs leading-relaxed">
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Detail Keluhan Pengguna</div>
-                  <p className="font-medium text-slate-700">{selectedDetails.description || selectedDetails.report?.description}</p>
-                </div>
-
-                {/* Attachments / Evidence */}
-                {selectedDetails.attachment && (
-                  <div className="space-y-2 text-xs">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Gambar Lampiran Bukti</span>
-                    <div className="relative group overflow-hidden rounded-xl border border-slate-200 bg-slate-50 max-w-sm h-48 flex items-center justify-center">
-                      <img
-                        src={selectedDetails.attachment}
-                        alt="Bukti Lampiran"
-                        className="object-cover w-full h-full group-hover:scale-[1.03] transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <button
-                          onClick={() => setActivePhotoModal(selectedDetails.attachment)}
-                          className="p-2 bg-white/90 backdrop-blur-xs text-slate-800 rounded-lg hover:bg-white transition-colors cursor-pointer shadow"
-                        >
-                          <Eye size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Handling Timeline */}
-                {selectedDetails.report?.timeline && selectedDetails.report.timeline.length > 0 && (
-                  <div className="space-y-3.5">
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider font-heading flex items-center gap-1.5">
-                      <Clock size={14} className="text-slate-400" />
-                      <span>Timeline Penanganan Kasus</span>
-                    </h4>
-
-                    <div className="relative pl-5 border-l-2 border-slate-100 space-y-4">
-                      {selectedDetails.report.timeline.map((item, idx) => (
-                        <div key={idx} className="relative">
-                          {/* Dot indicator */}
-                          <div className="absolute -left-[26px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-white bg-slate-400"></div>
-                          
-                          <div className="text-[10px] font-semibold text-slate-400 leading-none">{item.time}</div>
-                          <div className="text-xs font-extrabold text-slate-700 mt-1 leading-snug">{item.title}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            )}
-          </div>
-
+                    return (
+                      <tr key={reportId} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-5 font-mono text-xs font-bold text-slate-900">
+                          #{String(reportId).slice(0, 8)}
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="font-bold text-slate-900">{reporterName}</div>
+                          <div className="text-xs text-slate-400">{r.createdAt ? String(r.createdAt).slice(0, 10) : 'Hari ini'}</div>
+                        </td>
+                        <td className="py-4 px-5 font-semibold text-slate-800">
+                          {workerName}
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                            <AlertTriangle size={12} className="text-amber-500" />
+                            {r.category || 'Layanan Umum'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                            isPending 
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200/60'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                          }`}>
+                            {isPending ? <Clock size={12} /> : <CheckCircle size={12} />}
+                            {r.status || 'Pending'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-right space-x-2">
+                          <button
+                            onClick={() => setSelectedReport(r)}
+                            className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                            title="Detail Laporan"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          {isPending && (
+                            <button
+                              onClick={() => handleResolve(reportId)}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-xs transition-all"
+                            >
+                              Tandai Selesai
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-
       </div>
 
-      {/* Lightbox Zoom modal */}
-      {activePhotoModal && (
-        <div 
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 transition-all duration-300"
-          onClick={() => setActivePhotoModal(null)}
-        >
-          <div className="relative max-w-3xl w-full max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl border border-slate-800 bg-slate-900 flex items-center justify-center">
-            <button
-              onClick={() => setActivePhotoModal(null)}
-              className="absolute right-4 top-4 p-2 bg-slate-950/70 hover:bg-rose-600 text-white rounded-full transition-colors cursor-pointer border border-slate-800"
-            >
-              <X size={16} className="stroke-[2.5]" />
-            </button>
-            <img
-              src={activePhotoModal}
-              alt="Preview Zoom"
-              className="object-contain max-w-full max-h-[80vh] p-2"
-              onClick={(e) => e.stopPropagation()}
-            />
+      {/* Modal Detail Laporan */}
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 font-heading">
+                  Detail Laporan Kendala
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">
+                  ID: #{String(selectedReport.reportId || selectedReport.ReportID).slice(0, 12)}
+                </p>
+              </div>
+              <button 
+                onClick={() => setSelectedReport(null)}
+                className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs font-medium text-slate-700">
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-2xl">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pelapor</span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {selectedReport.reporterName || selectedReport.Reporter?.name || 'Pelanggan'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Worker Terlaporkan</span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {selectedReport.reportedWorkerName || selectedReport.ReportedWorker?.User?.name || 'Worker'}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Kategori Masalah</span>
+                <span className="inline-block px-3 py-1 rounded-xl bg-amber-50 text-amber-700 font-bold border border-amber-200/50">
+                  {selectedReport.category || 'Keluhan Layanan'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Deskripsi Aduan</span>
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/60 leading-relaxed text-slate-800">
+                  {selectedReport.description || 'Tidak ada deskripsi tambahan yang dilampirkan.'}
+                </div>
+              </div>
+
+              {selectedReport.attachment && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Bukti Lampiran</span>
+                  <img 
+                    src={selectedReport.attachment} 
+                    alt="Bukti Laporan" 
+                    className="w-full max-h-48 object-cover rounded-2xl border border-slate-200 shadow-xs"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50"
+              >
+                Tutup
+              </button>
+              {(selectedReport.status || '').toLowerCase() === 'pending' && (
+                <button
+                  onClick={() => handleResolve(selectedReport.reportId || selectedReport.ReportID)}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 shadow-xs"
+                >
+                  Selesaikan Laporan
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -365,3 +348,4 @@ const AdminReports = () => {
 };
 
 export default AdminReports;
+

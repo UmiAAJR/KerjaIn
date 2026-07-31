@@ -1,30 +1,31 @@
-import db from "../db/db.js";
-import initModels from "../model/init-models.js";
+import { Notification } from "../model/models.js";
 
-
-const model = initModels(db)
-const Notification = model.Notification
 
 export const getNotification =  async(req, res) => {
     try {
-        const perPage = req.query.perPage ?? 10
+        const { page: _page, perPage: _perPage, ...whereClause } = req.query;
+        const perPage = parseInt(_perPage) || 10;
+        const page = parseInt(_page) || 1;
+        const offset = (page - 1) * perPage;
         const totalData = await Notification.count()
-        let page = req.query.page ?? 1
-        let offset = (page - 1) * perPage
 
-        const notifiaction = await Notification.findAll({
+        const notification = await Notification.findAll({
             limit: perPage,
             offset: offset,
 
             where: {
-                ...req.query,
-                role: req.user.role
-            }
+                ...whereClause,
+                ...(req.user.role !== 'admin' ? { role: req.user.role } : {})
+            },
+
+            order: [
+                ["createdAt", "DESC"]
+            ]
         })
 
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: notifiaction,
+            data: notification,
             totalData: totalData
         })
     } catch (error) {
@@ -36,7 +37,7 @@ export const getNotification =  async(req, res) => {
 
 export const getLatestNotification = async (req, res) => {
     try {
-        const notifiaction = await Notification.findOne({
+        const notification = await Notification.findOne({
             order: [
                 ["createdAt", "DESC"]
             ]
@@ -45,7 +46,7 @@ export const getLatestNotification = async (req, res) => {
         
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: notifiaction
+            data: notification
         })
     } catch (error) {
         return res.status(500).json({
@@ -56,7 +57,7 @@ export const getLatestNotification = async (req, res) => {
 
 export const getDetailNotification = async (req, res) => {
     try {
-        const notifiaction = await Notification.findOne({
+        const notification = await Notification.findOne({
             where: {
                 NotificationID: req.params.id
             }
@@ -64,7 +65,7 @@ export const getDetailNotification = async (req, res) => {
 
         return res.json({
             message: "Berhasil mendapatkan data",
-            data: notifiaction
+            data: notification
         })
     } catch (error) {
         return res.status(500).json({
@@ -96,7 +97,7 @@ export const updateNotification = async(req, res) => {
         })
 
         return res.json({
-            message: "Berhasil memperbarui kategori"
+            message: "Berhasil memperbarui notifikasi"
         })
     } catch (error) {
         return res.status(500).json({

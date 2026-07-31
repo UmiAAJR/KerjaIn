@@ -1,13 +1,16 @@
-import db from "../db/db.js";
-import initModels from "../model/init-models.js";
+import { Category, Skill } from "../model/models.js";
 
-
-const model = initModels(db)
-const Category = model.Category
 
 export const getCategory =  async(req, res) => {
     try {
-        const category = await Category.findAll()
+        const category = await Category.findAll({
+            include: [
+                {
+                    model: Skill,
+                    as: "skills"
+                }
+            ]
+        })
 
         return res.json({
             message: "Berhasil mendapatkan data",

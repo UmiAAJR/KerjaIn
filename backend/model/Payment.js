@@ -15,7 +15,7 @@ export default class Payment extends Model {
       allowNull: true
     },
     status: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(50),
       allowNull: true
     },
     snapToken: {
@@ -25,6 +25,16 @@ export default class Payment extends Model {
     releasedAt: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    platformFee: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: 0
+    },
+    workerAmount: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: 0
     }
   }, {
     sequelize,

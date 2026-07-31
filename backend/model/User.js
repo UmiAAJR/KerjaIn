@@ -23,7 +23,7 @@ export default class User extends Model {
       allowNull: true
     },
     photo: {
-      type: DataTypes.STRING(255),
+      type: DataTypes.TEXT,
       allowNull: true
     },
     role: {

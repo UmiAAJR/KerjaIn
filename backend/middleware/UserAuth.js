@@ -6,7 +6,7 @@ export const VerifyUser = (req, res, next) => {
     try {
         const {authorization} = req.headers;
         if(!authorization) {
-            return res.status(403).json({
+            return res.status(401).json({
                 message: "Mohon login ulang"
             })
         }
@@ -18,7 +18,7 @@ export const VerifyUser = (req, res, next) => {
             const jwtDecode = jwt.verify(token, secret);
             req.user = jwtDecode
         } catch (error) {
-            return res.status(403).json({
+            return res.status(401).json({
                 message: "Mohon login ulang"
             })
         }

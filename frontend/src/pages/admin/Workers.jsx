@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
+import { showAlert } from '../../utils/swal';
 import { Mail, Phone, Search, AlertCircle, Check, X, Star, Calendar, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 const AdminWorkers = () => {
@@ -28,10 +29,11 @@ const AdminWorkers = () => {
   const handleVerify = async (workerId, status) => {
     try {
       await adminApi.verifyWorker(workerId, status);
+      showAlert("Berhasil", "success", "Status verifikasi worker telah diperbarui.");
       // Refresh list
       fetchWorkers();
     } catch (err) {
-      alert("Gagal mengubah status verifikasi: " + err.message);
+      showAlert("Gagal", "error", "Gagal mengubah status verifikasi: " + err.message);
     }
   };
 

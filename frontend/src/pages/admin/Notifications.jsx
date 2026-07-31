@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../../components/layout/AdminLayout';
 import { adminApi } from '../../services/adminService';
+import { showAlert, showConfirm } from '../../utils/swal';
 import { 
   Bell, 
   Send, 
@@ -29,7 +30,7 @@ const AdminNotifications = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const res = await adminApi.getNotifications();
+      const res = await adminApi.getNotifications().catch(() => []);
       setNotifications(res || []);
     } catch (err) {
       console.error("Error fetching notifications:", err);
@@ -45,7 +46,7 @@ const AdminNotifications = () => {
   const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) {
-      alert("Judul dan Deskripsi wajib diisi!");
+      showAlert("Data Belum Lengkap", "warning", "Judul dan Deskripsi wajib diisi!");
       return;
     }
 
@@ -60,7 +61,7 @@ const AdminNotifications = () => {
       };
       
       await adminApi.createNotification(payload);
-      alert("Notifikasi berhasil disiarkan (broadcast)!");
+      showAlert("Berhasil Disiarkan!", "success", "Notifikasi berhasil disiarkan (broadcast) ke seluruh pengguna!");
       
       // Reset form
       setTitle('');
@@ -72,19 +73,21 @@ const AdminNotifications = () => {
       // Refresh list
       fetchNotifications();
     } catch (err) {
-      alert("Gagal menyiarkan notifikasi: " + err.message);
+      showAlert("Gagal Broadcast", "error", err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus notifikasi ini dari sistem?")) return;
+    const isConfirmed = await showConfirm("Konfirmasi Hapus", "Apakah Anda yakin ingin menghapus notifikasi ini dari sistem?", "Ya, Hapus", "warning");
+    if (!isConfirmed) return;
     try {
       await adminApi.deleteNotification(id);
+      showAlert("Berhasil Hapus", "info", "Notifikasi berhasil dihapus.");
       fetchNotifications();
     } catch (err) {
-      alert("Gagal menghapus notifikasi: " + err.message);
+      showAlert("Gagal Hapus", "error", err.message);
     }
   };
 
@@ -112,10 +115,31 @@ const AdminNotifications = () => {
 
   return (
     <AdminLayout activeMenu="notifications">
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 select-none">
+      <div className="space-y-6 select-none">
         
-        {/* Left Side: Broadcast Form & Mobile Live Preview */}
-        <div className="xl:col-span-5 space-y-6 flex flex-col min-w-0">
+        {/* Notice Banner Dalam Pengembangan */}
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4 text-amber-900 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-white rounded-xl font-bold shrink-0">
+              <Bell size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-sm text-amber-900 font-heading uppercase tracking-wider">MODUL DALAM PENGEMBANGAN</span>
+                <span className="bg-amber-200 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">Development Preview</span>
+              </div>
+              <p className="text-xs font-semibold text-amber-800/90 mt-0.5 leading-relaxed">
+                Fitur Broadcast & Manajemen Notifikasi ini sedang disiapkan untuk rilis versi berikutnya. Seluruh formulir dan riwayat siaran di bawah diperlihatkan sebagai pratinjau aktif.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          
+          {/* Left Side: Broadcast Form & Mobile Live Preview */}
+          <div className="xl:col-span-5 space-y-6 flex flex-col min-w-0">
+
           
           {/* Broadcast Card */}
           <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-4">
@@ -378,8 +402,11 @@ const AdminNotifications = () => {
         </div>
 
       </div>
-    </AdminLayout>
-  );
+    </div>
+  </AdminLayout>
+);
+
 };
+
 
 export default AdminNotifications;

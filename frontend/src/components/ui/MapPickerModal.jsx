@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import { useLocation } from '../../context/LocationContext';
+import { showAlert } from '../../utils/swal';
 import { MapPin, SearchIcon, Compass } from 'lucide-react';
 
 const MapPickerModal = ({ isOpen, onClose, onSelectLocation }) => {
@@ -119,7 +120,7 @@ const MapPickerModal = ({ isOpen, onClose, onSelectLocation }) => {
   // Geolocation trigger
   const handleCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Browser Anda tidak mendukung deteksi lokasi GPS.");
+      showAlert('GPS Tidak Didukung', 'error', 'Browser Anda tidak mendukung deteksi lokasi GPS.');
       return;
     }
     
@@ -133,7 +134,7 @@ const MapPickerModal = ({ isOpen, onClose, onSelectLocation }) => {
       },
       (error) => {
         console.error("Geolocation error:", error);
-        alert("Gagal mendapatkan lokasi saat ini. Pastikan izin GPS aktif.");
+        showAlert('GPS Gagal', 'warning', 'Gagal mendapatkan lokasi saat ini. Pastikan izin GPS aktif.');
       }
     );
   };

@@ -15,8 +15,7 @@ export default function ClientHistory() {
       setLoading(true);
       try {
         const data = await clientApi.getHistory();
-        // Sort by date/id descending
-        setHistory(data.reverse());
+        setHistory(Array.isArray(data) ? [...data].reverse() : []);
       } catch (err) {
         console.error('Gagal mengambil riwayat pekerjaan:', err);
       } finally {

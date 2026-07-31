@@ -328,16 +328,28 @@ const realClientApi = {
             const nearestRes = await axiosInstance.get('/worker/nearest', { timeout: 3500 });
             const list = nearestRes.data.data || nearestRes.data || [];
             if (list.length > 0) {
-                recommendedWorkers = list.map(w => ({
-                    id: w.WorkerID || w.Worker?.WorkerID || w.id || w.UserID,
-                    name: w.User?.name || w.name,
-                    photo: w.User?.photo || w.photo,
-                    rating: w.rating || w.Worker?.rating || 5.0,
-                    status: w.status || w.Worker?.status || 'Available',
-                    distance: parseFloat(w.distance || 1.5).toFixed(1),
-                    skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || w.Worker?.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
-                    hourlyRate: getWorkerHourlyRate(w)
-                })).slice(0, 3);
+                recommendedWorkers = list.map(w => {
+                    const workerObj = w.Worker || w;
+                    const userObj = w.User || (w.Worker ? w : w);
+                    const rawDist = w.distance !== undefined ? w.distance : (w.dataValues?.distance || 1.5);
+                    const formattedDist = !isNaN(parseFloat(rawDist)) ? parseFloat(rawDist).toFixed(1) : '1.5';
+                    
+                    const skillsList = workerObj?.Worker_skill?.map(ws => ({ skillName: ws.Skill?.name }))
+                                    || w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name }))
+                                    || w.skills
+                                    || [];
+
+                    return {
+                        id: workerObj.WorkerID || w.WorkerID || w.id || w.UserID,
+                        name: userObj.name || w.name || 'Worker',
+                        photo: userObj.photo || w.photo,
+                        rating: 5.0,
+                        status: workerObj.status || 'Available',
+                        distance: formattedDist,
+                        skills: skillsList,
+                        hourlyRate: getWorkerHourlyRate(w)
+                    };
+                }).slice(0, 5);
             } else {
                 throw new Error("Empty list returned");
             }
@@ -346,16 +358,21 @@ const realClientApi = {
             try {
                 const fallbackRes = await axiosInstance.get('/worker');
                 const list = fallbackRes.data.data || [];
-                recommendedWorkers = list.map(w => ({
-                    id: w.WorkerID || w.Worker?.WorkerID || w.id || w.UserID,
-                    name: w.User?.name || w.name,
-                    photo: w.User?.photo || w.photo,
-                    rating: w.rating || w.Worker?.rating || 5.0,
-                    status: w.status || w.Worker?.status || 'Available',
-                    distance: 1.5,
-                    skills: w.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || w.Worker?.WorkerSkills?.map(ws => ({ skillName: ws.Skill?.name })) || [],
-                    hourlyRate: getWorkerHourlyRate(w)
-                })).slice(0, 3);
+                recommendedWorkers = list.map(w => {
+                    const workerObj = w.Worker || w;
+                    const userObj = w.User || (w.Worker ? w : w);
+                    const skillsList = workerObj?.Worker_skill?.map(ws => ({ skillName: ws.Skill?.name })) || [];
+                    return {
+                        id: workerObj.WorkerID || w.WorkerID || w.id || w.UserID,
+                        name: userObj.name || w.name || 'Worker',
+                        photo: userObj.photo || w.photo,
+                        rating: 5.0,
+                        status: workerObj.status || 'Available',
+                        distance: '1.5',
+                        skills: skillsList,
+                        hourlyRate: getWorkerHourlyRate(w)
+                    };
+                }).slice(0, 5);
             } catch (fallbackErr) {
                 console.error("Fallback workers fetch failed:", fallbackErr);
             }
@@ -382,93 +399,106 @@ const realClientApi = {
         };
     },
     searchWorkers: async (keyword = '', rating = 0, radius = 10, category = '') => {
-        const res = await axiosInstance.get('/worker');
-        let workers = res.data.data || [];
-        
-        workers = workers.map(w => ({
-            id: w.WorkerID || w.id,
-            name: w.User?.name || w.name,
-            email: w.User?.email || w.email,
-            phone: w.User?.phoneNumber || w.phone || '',
-            photo: w.User?.photo || w.photo,
-            verified: w.verified || false,
-            rating: w.rating || 5.0,
-            status: w.status || 'Available',
-            address: w.User?.address || w.address || '',
-            distance: w.distance || 1.5,
-            skills: (w.WorkerSkills || w.Worker_skill || []).map(ws => ({ skillName: ws.Skill?.name })),
-            hourlyRate: getWorkerHourlyRate(w)
-        }));
+        try {
+            const res = await axiosInstance.get('/worker');
+            let workers = res.data.data || [];
+            
+            workers = workers.map(w => ({
+                id: w.WorkerID || w.id,
+                name: w.User?.name || w.name || 'Pekerja Profesional',
+                email: w.User?.email || w.email || '',
+                phone: w.User?.phoneNumber || w.phone || '',
+                photo: w.User?.photo || w.photo || '',
+                verified: w.status === 'verified' || w.verified || false,
+                rating: Number(w.rating || 5.0),
+                status: w.status || 'Available',
+                address: w.User?.address || w.address || 'Jakarta',
+                distance: w.distance || 1.5,
+                skills: (w.Worker_skill || w.WorkerSkills || []).map(ws => ({ skillName: ws.Skill?.name || ws.skillName || 'Layanan Umum' })),
+                hourlyRate: getWorkerHourlyRate(w)
+            }));
 
-        if (keyword) {
-            const kw = keyword.toLowerCase();
-            workers = workers.filter(w =>
-                w.name.toLowerCase().includes(kw) ||
-                w.skills.some(s => s.skillName.toLowerCase().includes(kw))
-            );
-        }
-
-        if (category) {
-            const cat = category.toLowerCase();
-            workers = workers.filter(w =>
-                w.skills.some(s => s.skillName.toLowerCase().includes(cat))
-            );
-        }
-
-        if (rating > 0) {
-            workers = workers.filter(w => w.rating >= rating);
-        }
-
-        return workers;
-    },
-    getWorkerDetail: async (id) => {
-        const res = await axiosInstance.get(`/worker/${id}`);
-        const w = res.data.data;
-        if (w) {
-            let reviews = [];
-            let jobsDone = 0;
-            let rating = 5.0;
-            try {
-                const jobsRes = await axiosInstance.get('/job', { params: { WorkerID: id, status: 'COMPLETED' } });
-                const jobsList = jobsRes.data.data || [];
-                jobsDone = jobsList.length;
-                
-                const ratedJobs = jobsList.filter(j => j.rating && j.rating > 0);
-                if (ratedJobs.length > 0) {
-                    const ratingSum = ratedJobs.reduce((acc, curr) => acc + Number(curr.rating), 0);
-                    rating = ratingSum / ratedJobs.length;
-                }
-                
-                reviews = ratedJobs.map(j => ({
-                    id: j.JobID,
-                    clientName: 'Client KerjaIn',
-                    rating: Number(j.rating),
-                    comment: j.comment || 'Pekerjaan selesai dengan baik.',
-                    date: j.finishedAt ? j.finishedAt.slice(0, 10) : 'Baru-baru ini'
-                }));
-            } catch (err) {
-                console.error("Failed to load worker reviews from jobs:", err);
+            if (keyword) {
+                const kw = keyword.toLowerCase();
+                workers = workers.filter(w =>
+                    w.name.toLowerCase().includes(kw) ||
+                    w.skills.some(s => s.skillName.toLowerCase().includes(kw))
+                );
             }
 
-            const hourlyRate = getWorkerHourlyRate(w);
-            return {
-                id: w.WorkerID || w.id,
-                name: w.User?.name || w.name,
-                email: w.User?.email || w.email,
-                phone: w.User?.phoneNumber || w.phone || '',
-                photo: w.User?.photo || w.photo,
-                verified: w.verified || false,
-                rating,
-                jobsDone,
-                status: w.status || 'Available',
-                address: w.User?.address || w.address || '',
-                distance: w.distance || 1.5,
-                skills: (w.WorkerSkills || w.Worker_skill || []).map(ws => ({ skillName: ws.Skill?.name, experienceLevel: ws.experienceLevel || 'Beginner' })),
-                description: w.description || 'Pekerja Profesional.',
-                bankAccount: w.bankAccount || w.bankNumber || 'BCA - 1234567890',
-                hourlyRate,
-                reviews
-            };
+            if (category) {
+                const cat = category.toLowerCase();
+                workers = workers.filter(w =>
+                    w.skills.some(s => s.skillName.toLowerCase().includes(cat))
+                );
+            }
+
+            if (rating > 0) {
+                workers = workers.filter(w => w.rating >= rating);
+            }
+
+            return workers;
+        } catch (err) {
+            console.error("searchWorkers API error:", err);
+            return [];
+        }
+    },
+    getWorkerDetail: async (id) => {
+        try {
+            const res = await axiosInstance.get(`/worker/${id}`);
+            const w = res.data.data;
+            if (w) {
+                let reviews = [];
+                let jobsDone = 0;
+                let rating = 5.0;
+                try {
+                    const targetWorkerId = w.WorkerID || id;
+                    const jobsRes = await axiosInstance.get('/job', { params: { WorkerID: targetWorkerId, status: 'COMPLETED' } });
+                    const jobsList = jobsRes.data.data || [];
+                    jobsDone = jobsList.length;
+                    
+                    const ratedJobs = jobsList.filter(j => j.rating && Number(j.rating) > 0);
+                    if (ratedJobs.length > 0) {
+                        const ratingSum = ratedJobs.reduce((acc, curr) => acc + Number(curr.rating), 0);
+                        rating = ratingSum / ratedJobs.length;
+                    }
+                    
+                    reviews = ratedJobs.map(j => ({
+                        id: j.JobID,
+                        clientName: 'Client KerjaIn',
+                        rating: Number(j.rating),
+                        comment: j.comment || 'Pekerjaan selesai dengan baik.',
+                        date: j.finishedAt ? String(j.finishedAt).slice(0, 10) : 'Baru-baru ini'
+                    }));
+                } catch (err) {
+                    console.error("Failed to load worker reviews from jobs:", err);
+                }
+
+                const hourlyRate = getWorkerHourlyRate(w);
+                return {
+                    id: w.WorkerID || w.id || id,
+                    name: w.User?.name || w.name || 'Pekerja Profesional',
+                    email: w.User?.email || w.email || '',
+                    phone: w.User?.phoneNumber || w.phone || '',
+                    photo: w.User?.photo || w.photo || '',
+                    verified: w.status === 'verified' || w.verified || false,
+                    rating,
+                    jobsDone,
+                    status: w.status || 'Available',
+                    address: w.User?.address || w.address || 'Jakarta',
+                    distance: w.distance || 1.5,
+                    skills: (w.Worker_skill || w.WorkerSkills || []).map(ws => ({
+                        skillName: ws.Skill?.name || ws.skillName || 'Layanan Umum',
+                        experienceLevel: ws.experienceLevel || 'Profesional'
+                    })),
+                    description: w.description || 'Pekerja terpercaya yang siap membantu kebutuhan Anda secara cepat dan profesional.',
+                    bankAccount: w.bankAccount || w.bankNumber || 'BCA - 1234567890',
+                    hourlyRate,
+                    reviews
+                };
+            }
+        } catch (err) {
+            console.error("getWorkerDetail API error:", err);
         }
         return null;
     },
@@ -552,19 +582,25 @@ const realClientApi = {
         return newJob;
     },
 
+    initMidtransTransaction: async (jobId, totalPembayaran, serviceName) => {
+        try {
+            const res = await axiosInstance.post('/payment', {
+                JobID: jobId,
+                amount: Number(totalPembayaran),
+                serviceName: serviceName || 'Layanan Harian KerjaIn'
+            });
+            return res.data;
+        } catch (e) {
+            console.warn("initMidtransTransaction API failed:", e.message);
+            throw e;
+        }
+    },
     createEscrowPayment: async (jobId, totalPembayaran, metodePembayaran) => {
         const isUUID = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
         if (isUUID(jobId)) {
-            try {
-                const res = await axiosInstance.post(`/payment`, {
-                    JobID: jobId,
-                    amount: Number(totalPembayaran),
-                    paymentMethod: metodePembayaran
-                });
-                if (res.data) return res.data;
-            } catch (e) {
-                console.warn("Backend POST /payment failed:", e.message);
-            }
+            // Payment status is changed only by the verified Midtrans webhook.
+            // Do not simulate an escrow payment against the real backend.
+            return { jobId, status: 'PENDING_WEBHOOK', method: metodePembayaran, amount: totalPembayaran };
         }
 
         const jobs = getData('ki_jobs') || [];
@@ -599,23 +635,35 @@ const realClientApi = {
                 const res = await axiosInstance.get(`/job/${jobId}`);
                 if (res.data?.data) {
                     const jobData = res.data.data;
+                    const priceVal = Number(jobData.Payment?.amount || jobData.price || jobData.estimatedPrice || 50000);
                     return {
                         jobId: jobData.JobID || jobId,
+                        JobID: jobData.JobID || jobId,
                         status: jobData.status || 'ESCROW_PAID',
-                        bookingDate: jobData.bookingDate,
-                        schedule: jobData.schedule,
-                        startedAt: jobData.startedAt,
-                        finishedAt: jobData.finishedAt,
+                        bookingDate: jobData.bookingDate ? String(jobData.bookingDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
+                        date: jobData.bookingDate ? String(jobData.bookingDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
+                        schedule: jobData.schedule ? (typeof jobData.schedule === 'string' && jobData.schedule.includes('T') ? jobData.schedule.slice(0, 10) + ' ' + jobData.schedule.slice(11, 16) : String(jobData.schedule)) : 'Hari Ini',
+                        startedAt: jobData.startedAt ? String(jobData.startedAt).slice(0, 16).replace('T', ' ') : 'N/A',
+                        finishedAt: jobData.finishedAt ? String(jobData.finishedAt).slice(0, 16).replace('T', ' ') : 'N/A',
+                        workerName: jobData.Worker?.User?.name || 'Pekerja Profesional',
+                        workerPhone: jobData.Worker?.User?.phoneNumber || '081299998888',
+                        workerPhoto: jobData.Worker?.User?.photo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+                        service: jobData.Worker?.Worker_skill?.[0]?.Skill?.name || jobData.service || 'Layanan KerjaIn',
+                        jobCategory: 'Layanan KerjaIn',
+                        price: priceVal,
+                        rating: Number(jobData.rating || 0),
+                        comment: jobData.comment || '',
+                        address: jobData.address || jobData.Client?.address || 'Jakarta',
                         worker: {
                             workerName: jobData.Worker?.User?.name || 'Pekerja Profesional',
-                            workerPhone: jobData.Worker?.User?.phoneNumber || '081299998888',
-                            workerPhoto: jobData.Worker?.User?.photo || '',
+                            phone: jobData.Worker?.User?.phoneNumber || '081299998888',
+                            rating: 5.0,
                             currentLatitude: jobData.Worker?.User?.latitude || -6.2088,
                             currentLongtitude: jobData.Worker?.User?.longitude || 106.8456,
                             eta: '15 mins'
                         },
                         smartWage: {
-                            recommendedPrice: jobData.amount || 70000
+                            recommendedPrice: priceVal
                         },
                         panic: {
                             enabled: false,
@@ -717,8 +765,46 @@ const realClientApi = {
         return res.data;
     },
     getHistory: async () => {
-        const res = await axiosInstance.get('/job');
-        return res.data.data || [];
+        let backendJobs = [];
+        try {
+            const res = await axiosInstance.get('/job');
+            backendJobs = res.data?.data || [];
+        } catch (err) {
+            console.warn("getHistory API notice:", err.message);
+        }
+
+        let localJobs = [];
+        try {
+            localJobs = JSON.parse(localStorage.getItem('ki_jobs')) || [];
+        } catch (e) {}
+
+        const allJobsRaw = [...backendJobs, ...localJobs];
+        const uniqueJobs = [];
+        const seenIds = new Set();
+
+        for (const j of allJobsRaw) {
+            const id = j.JobID || j.jobId || j.id;
+            if (id && !seenIds.has(id)) {
+                seenIds.add(id);
+                uniqueJobs.push(j);
+            }
+        }
+
+        return uniqueJobs.map(j => ({
+            ...j,
+            jobId: j.JobID || j.jobId || j.id,
+            WorkerID: j.WorkerID,
+            workerName: j.Worker?.User?.name || j.workerName || 'Pekerja Profesional',
+            workerPhoto: j.Worker?.User?.photo || j.workerPhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150',
+            service: j.Worker?.Worker_skill?.[0]?.Skill?.name || j.service || 'Layanan Umum',
+            schedule: j.schedule ? (typeof j.schedule === 'string' && j.schedule.includes('T') ? j.schedule.slice(0, 10) + ' ' + j.schedule.slice(11, 16) : String(j.schedule)) : (j.bookingDate ? String(j.bookingDate).slice(0, 10) : 'Hari Ini'),
+            date: j.bookingDate ? String(j.bookingDate).slice(0, 10) : new Date().toISOString().slice(0, 10),
+            price: Number(j.Payment?.amount || j.price || j.estimatedPrice || 50000),
+            status: j.status || 'WAITING_PAYMENT',
+            rating: Number(j.rating || 0),
+            comment: j.comment || '',
+            address: j.address || j.Client?.address || 'Jakarta'
+        }));
     },
     getNotifications: async () => {
         const res = await axiosInstance.get('/notification', { params: { role: 'client' } });
