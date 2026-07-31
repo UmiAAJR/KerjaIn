@@ -171,11 +171,18 @@ const Login = () => {
 
                 {/* Footer info text */}
                 <div className="mt-8 flex flex-col gap-4">
-                    <div className="text-center text-xs font-semibold text-slate-500">
-                        Belum punya akun?{' '}
-                        <Link to="/register" className="text-teal-800 font-extrabold hover:underline">
-                            Daftar
-                        </Link>
+                    <div className="mt-6 text-center text-xs font-semibold text-slate-500 flex flex-col gap-2">
+                        <div>
+                            Belum punya akun?{' '}
+                            <Link to="/register" className="text-teal-800 font-extrabold hover:underline">
+                                Daftar
+                            </Link>
+                        </div>
+                        <div>
+                            <Link to="/admin/login" className="text-xs font-bold text-slate-400 hover:text-teal-800 transition-colors underline decoration-dashed">
+                                Masuk Portal Administrator
+                            </Link>
+                        </div>
                     </div>
 
                     <p className="text-[10px] font-semibold text-slate-400 text-center leading-relaxed max-w-[80%] mx-auto">
