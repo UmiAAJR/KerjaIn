@@ -121,7 +121,7 @@ export default function WorkerDashboard() {
           <div className="relative z-10">
             <p className="text-md font-medium text-cyan-100/80">Saldo Anda</p>
             <h2 className="mt-2 mb-4 text-3xl font-bold tracking-tight leading-tight text-white">
-              {formatRupiah(data?.walletBalance)}
+              {formatRupiah(data?.walletBalance ?? income?.walletBalance ?? data?.balance)}
             </h2>
 
             {/* Tombol Tarik Dana & Riwayat */}
@@ -160,7 +160,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Hari Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(data?.todayIncome)}
+                  {formatRupiah(data?.todayIncome ?? income?.todayIncome)}
                 </p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Minggu Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(data?.weeklyIncome)}
+                  {formatRupiah(data?.weeklyIncome ?? income?.weeklyIncome)}
                 </p>
               </div>
             </div>
@@ -180,7 +180,7 @@ export default function WorkerDashboard() {
               <p className="text-xs font-medium text-slate-600">Bulan Ini</p>
               <div className="mt-1 text-center">
                 <p className="text-sm font-extrabold leading-tight text-gray-900">
-                  {formatRupiah(income?.monthlyIncome)}
+                  {formatRupiah(data?.monthlyIncome ?? income?.monthlyIncome)}
                 </p>
               </div>
             </div>
